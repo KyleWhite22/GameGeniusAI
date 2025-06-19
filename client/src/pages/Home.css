@@ -1,0 +1,82 @@
+.home-wrapper {
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(to bottom right, #0f0f0f, #1a1a1a);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.home-content {
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #f0f0f0;
+}
+
+/* Modern profile image */
+.avatar {
+  width: 160px;
+  height: auto;
+  object-fit: cover;
+  border-radius: 12px; /* ✅ Soft corners instead of circle */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  margin-bottom: 2rem;
+  border: 1px solid #444;
+}
+
+/* Name styling */
+.name {
+  font-size: 2.75rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Subtitle / tagline */
+.tagline {
+  font-size: 1.2rem;
+  color: #cccccc;
+  margin: 1rem 0 2rem;
+}
+
+/* Buttons */
+.home-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  background-color: #bb0000;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.25s ease;
+}
+
+.btn:hover {
+  background-color: #990000;
+}
+
+.btn.secondary {
+  background: transparent;
+  border: 2px solid #bb0000;
+  color: #bb0000;
+}
+
+.btn.secondary:hover {
+  background: #bb0000;
+  color: white;
+}
+
