@@ -10,6 +10,12 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "express": "^5.1.0"
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.0",
+    "express": "^5.1.0",
+    "express-session": "^1.18.1",
+    "openai": "^5.8.2",
+    "passport": "^0.7.0",
+    "passport-steam": "^1.0.18"
   }
 }

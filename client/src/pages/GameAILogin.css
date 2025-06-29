@@ -1,0 +1,48 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #111;
+    color: #fff;
+}
+
+.home-container {
+    text-align: center;
+    padding-top: 20vh;
+}
+
+header h1 {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
+
+header p {
+    font-size: 1.25rem;
+    margin-bottom: 2rem;
+    color: #ccc;
+}
+
+button {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    background-color: #47cfb6;
+    border: none;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+    button:hover {
+        background-color: #21b05a;
+    }
+.steam-login-btn {
+    margin-top: 2rem;
+    padding: 1rem 2rem;
+    background-color: #171a21;
+    color: white;
+    font-size: 1rem;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 0 10px #00ff00;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
