@@ -16,7 +16,7 @@ function Home() {
       <div className="home-content">
         <img src={kyleImg} alt="Kyle White" className="avatar" />
         <h1 className="name">Kyle White</h1>
-        <p className="tagline">Crafting code with precision & passion at Ohio State.</p>
+        <p className="tagline">Welcome to my website!</p>
       </div>
     </div>
   );
