@@ -60,7 +60,7 @@ function GameAI() {
     }, []);
 
     function fetchGames(steamId) {
-        fetch(`http://localhost:5000/api/games/user/${steamId}`)
+        fetch(`${import.meta.env.VITE_API_URL}/api/games/user/${steamId}`)
             .then(res => res.json())
             .then(data => {
                 setGames(data.allGames || []);
@@ -83,7 +83,7 @@ function GameAI() {
     const fetchRecommendations = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/recommend', {
+            const res =  await fetch(`${import.meta.env.VITE_API_URL}/api/recommend`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ gamesWithTags: topGames }),
@@ -285,7 +285,7 @@ function GameAI() {
                                     try {
                                         const enriched = await Promise.all(
                                             customSelection.map(async (game) => {
-                                                const res = await fetch(`http://localhost:5000/api/tags/${game.appid}`);
+                                                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/tags/${game.appid}`);
                                                 if (!res.ok) throw new Error(`Failed to fetch tags for ${game.name}`);
                                                 const data = await res.json();
                                                 return { ...game, tags: data.tags || [] };
