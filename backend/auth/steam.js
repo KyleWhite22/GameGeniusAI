@@ -7,6 +7,7 @@ const router = express.Router();
 // --- Passport Setup ---
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
+console.log('🌐 STEAM_REALM:', process.env.STEAM_REALM);
 
 passport.use(new SteamStrategy(
   {
