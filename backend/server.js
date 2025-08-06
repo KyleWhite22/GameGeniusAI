@@ -10,6 +10,7 @@ const steamAuth = require('./auth/steam');
 const gamesRoute = require('./routes/games'); // ✅ NEW
 const steamTagsRoute = require('./routes/steamTags');
 const recommendRoute = require('./routes/recommend');
+const MongoStore = require('connect-mongo');
 
 const app = express();
 
@@ -25,12 +26,16 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'keyboard cat',
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGO_URI, 
+    collectionName: 'sessions',
+  }),
   cookie: {
-  secure: process.env.NODE_ENV === 'production',         
-  sameSite: 'none',     
-  httpOnly: true,
-  maxAge: 24 * 60 * 60 * 1000
-}
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'none',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000
+  }
 }));
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
