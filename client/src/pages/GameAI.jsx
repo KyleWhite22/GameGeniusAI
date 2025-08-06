@@ -43,7 +43,7 @@ function GameAI() {
     }, []);
 
     useEffect(() => {
-        fetch('http://localhost:5000/auth/user', { credentials: 'include' })
+        fetch(`${import.meta.env.VITE_API_URL}/auth/user`, { credentials: 'include' })
             .then(res => res.json())
             .then(data => {
                 if (data.user) {
@@ -113,7 +113,6 @@ function GameAI() {
 
     return (
         <div className="gameai-wrapper">
-            <div className="profile-container"></div>
             <div className="profile-container">
                 <div className="gameai-content">
                     <div className="profile-header">
