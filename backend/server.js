@@ -13,15 +13,9 @@ const gamesRoute = require('./routes/games'); // ✅ NEW
 const steamTagsRoute = require('./routes/steamTags');
 const recommendRoute = require('./routes/recommend');
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
-  console.log('✅ MongoDB connected');
-}).catch(err => {
-  console.error('❌ MongoDB connection error:', err);
-});
-
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('✅ Connected to MongoDB'))
+  .catch((err) => console.error('❌ MongoDB error:', err));
 const app = express();
 
 
@@ -33,18 +27,16 @@ app.use(cors({
 app.set('trust proxy', 1);
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'keyboard cat',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGO_URI,
-    ttl: 24 * 60 * 60 // 1 day
+    ttl: 14 * 24 * 60 * 60, // Optional: session TTL (14 days)
   }),
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
     sameSite: 'none',
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000
+    secure: true, // required for cookies over HTTPS
   }
 }));
 process.on('unhandledRejection', (reason, promise) => {
