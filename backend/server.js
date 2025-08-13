@@ -9,16 +9,23 @@ const passport = require('passport');
 const cors = require('cors');
 
 const steamAuth = require('./auth/steam');
-const gamesRoute = require('./routes/games'); // ✅ NEW
+const gamesRoute = require('./routes/games');
 const steamTagsRoute = require('./routes/steamTags');
 const recommendRoute = require('./routes/recommend');
 
+// ✅ DEFINE APP FIRST
+const app = express();
+
+// ✅ Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI, {
   serverApi: { version: '1' },
   tls: true,
   tlsAllowInvalidCertificates: false,
-});
+})
+.then(() => console.log('✅ Connected to MongoDB'))
+.catch((err) => console.error('❌ MongoDB error:', err));
 
+// ✅ Middleware setup
 app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true
@@ -26,34 +33,37 @@ app.use(cors({
 
 app.set('trust proxy', 1);
 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
-    cookie: {
-      httpOnly: true,
-      secure: true,        // must be true with HTTPS
-      sameSite: 'none',    // required for cross-origin
-    },
-  })
-);
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+  cookie: {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+  },
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(express.json());
+
+// ✅ Routes
+app.use('/auth', steamAuth);
+app.use('/api/games', gamesRoute);
+app.use('/api', steamTagsRoute);
+app.use('/api/recommend', recommendRoute);
+
+// ✅ Error handling
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
 });
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
 });
-app.use(passport.initialize());
-app.use(passport.session());
-app.use(express.json());
-app.use('/auth', steamAuth);
-app.use('/api/games', gamesRoute); // ✅ NEW
-app.use('/api', steamTagsRoute);
-app.use('/api/recommend', recommendRoute);  // New recommendation route
 
-
+// ✅ Start server
 try {
   app.listen(3000, '0.0.0.0', () => {
     console.log('✅ Server listening on http://localhost:3000');
