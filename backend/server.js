@@ -3,6 +3,8 @@ console.log('CLIENT_URL:', process.env.CLIENT_URL);
 
 const express = require('express');
 const session = require('express-session');
+const mongoose = require('mongoose');
+const MongoStore = require('connect-mongo');
 const passport = require('passport');
 const cors = require('cors');
 
@@ -10,7 +12,15 @@ const steamAuth = require('./auth/steam');
 const gamesRoute = require('./routes/games'); // ✅ NEW
 const steamTagsRoute = require('./routes/steamTags');
 const recommendRoute = require('./routes/recommend');
-const MongoStore = require('connect-mongo');
+
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('✅ MongoDB connected');
+}).catch(err => {
+  console.error('❌ MongoDB connection error:', err);
+});
 
 const app = express();
 
@@ -27,8 +37,8 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URI, 
-    collectionName: 'sessions',
+    mongoUrl: process.env.MONGO_URI,
+    ttl: 24 * 60 * 60 // 1 day
   }),
   cookie: {
     secure: process.env.NODE_ENV === 'production',
