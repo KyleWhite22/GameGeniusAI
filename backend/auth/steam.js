@@ -38,8 +38,8 @@ router.get('/steam/return', (req, res, next) => {
 }, passport.authenticate('steam', { failureRedirect: '/' }),
 (req, res) => {
   console.log('✅ [steam] Authenticated:', req.user);
-  console.log('➡️ Redirecting to:', `${process.env.CLIENT_URL}/GameAI`);
-  res.redirect(`${process.env.CLIENT_URL}/GameAI`);
+  console.log('➡️ Redirecting to:', `${process.env.CLIENT_URL}/gameAI`);
+  res.redirect(`${process.env.CLIENT_URL}/gameAI`);
 });
 
 // ✅ NEW: Return current authenticated user

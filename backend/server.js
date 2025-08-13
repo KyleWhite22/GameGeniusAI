@@ -13,11 +13,11 @@ const gamesRoute = require('./routes/games'); // ✅ NEW
 const steamTagsRoute = require('./routes/steamTags');
 const recommendRoute = require('./routes/recommend');
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch((err) => console.error('❌ MongoDB error:', err));
-const app = express();
-
+mongoose.connect(process.env.MONGO_URI, {
+  serverApi: { version: '1' },
+  tls: true,
+  tlsAllowInvalidCertificates: false,
+});
 
 app.use(cors({
   origin: process.env.CLIENT_URL,
@@ -26,19 +26,19 @@ app.use(cors({
 
 app.set('trust proxy', 1);
 
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URI,
-    ttl: 14 * 24 * 60 * 60, // Optional: session TTL (14 days)
-  }),
-  cookie: {
-    sameSite: 'none',
-    secure: true, // required for cookies over HTTPS
-  }
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+    cookie: {
+      httpOnly: true,
+      secure: true,        // must be true with HTTPS
+      sameSite: 'none',    // required for cross-origin
+    },
+  })
+);
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
 });
