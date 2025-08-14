@@ -62,7 +62,9 @@ process.on('unhandledRejection', (reason, promise) => {
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
 });
-
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, uptime: process.uptime() });
+});
 // ✅ Start server
 try {
   app.listen(5000, '0.0.0.0', () => {
