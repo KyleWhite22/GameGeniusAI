@@ -5,142 +5,140 @@ import './GameAI.css';
 const API = import.meta.env.VITE_API_URL;
 
 function GameAI() {
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [games, setGames] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [rotation, setRotation] = useState(0);
-  const [topGames, setTopGames] = useState([]);
-  const [recommendations, setRecommendations] = useState('');
-  const [showGamePicker, setShowGamePicker] = useState(false);
-  const [customSelection, setCustomSelection] = useState([]);
-  const requestRef = useRef();
-  const [ratings, setRatings] = useState(() => {
-    const stored = localStorage.getItem('gameRatings');
-    return stored ? JSON.parse(stored) : {};
-  });
-  const [paused, setPaused] = useState(false);
-  const [pendingRatingAppId, setPendingRatingAppId] = useState(null);
+    const navigate = useNavigate();
+    const [user, setUser] = useState(null);
+    const [games, setGames] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [rotation, setRotation] = useState(0);
+    const [topGames, setTopGames] = useState([]);
+    const [recommendations, setRecommendations] = useState('');
+    const [showGamePicker, setShowGamePicker] = useState(false);
+    const [customSelection, setCustomSelection] = useState([]);
+    const requestRef = useRef();
+    const [ratings, setRatings] = useState(() => {
+        const stored = localStorage.getItem('gameRatings');
+        return stored ? JSON.parse(stored) : {};
+    });
+    const [paused, setPaused] = useState(false);
+    const [pendingRatingAppId, setPendingRatingAppId] = useState(null);
 
-  const setRating = (appid, value) => {
-    const updated = { ...ratings, [appid]: value };
-    setRatings(updated);
-    localStorage.setItem('gameRatings', JSON.stringify(updated));
-  };
+    const setRating = (appid, value) => {
+        const updated = { ...ratings, [appid]: value };
+        setRatings(updated);
+        localStorage.setItem('gameRatings', JSON.stringify(updated));
+    };
 
-  // 1) Load cached topThree on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('topThree');
-      if (stored && stored !== 'undefined') {
-        const parsed = JSON.parse(stored);
-        setTopGames(parsed);
-        setCustomSelection(parsed);
-      } else {
-        setTopGames([]);
-      }
-    } catch (err) {
-      console.error('❌ Failed to parse topThree:', err);
-      setTopGames([]);
-    }
-  }, []);
-
-  // 2) Load user → games → resume
-  useEffect(() => {
-    const load = async () => {
-      if (!API) {
-        console.error('VITE_API_URL is not defined at build time.');
-        setLoading(false);
-        return;
-      }
-      try {
-        const res = await fetch(`${API}/auth/user`, { credentials: 'include' });
-        if (!res.ok) throw new Error(`GET /auth/user -> ${res.status}`);
-        const data = await res.json();
-
-        if (data.user) {
-          setUser(data.user);
-          await fetchGames(data.user.id);
-          const resumeUrl = localStorage.getItem('resumeUrl');
-          if (resumeUrl) {
-            localStorage.removeItem('resumeUrl');
-            navigate(resumeUrl);
-          }
-        } else {
-          setLoading(false);
+    // 1) Load cached topThree on mount
+    useEffect(() => {
+        try {
+            const stored = localStorage.getItem('topThree');
+            if (stored && stored !== 'undefined') {
+                const parsed = JSON.parse(stored);
+                setTopGames(parsed);
+                setCustomSelection(parsed);
+            } else {
+                setTopGames([]);
+            }
+        } catch (err) {
+            console.error('❌ Failed to parse topThree:', err);
+            setTopGames([]);
         }
-      } catch (err) {
-        console.error('Failed to fetch user:', err);
+    }, []);
+
+    // 2) Load user → games → resume
+    useEffect(() => {
+        const load = async () => {
+            if (!API) {
+                console.error('VITE_API_URL is not defined at build time.');
+                setLoading(false);
+                return;
+            }
+            try {
+                const res = await fetch(`${API}/auth/user`, { credentials: 'include' });
+                if (!res.ok) throw new Error(`GET /auth/user -> ${res.status}`);
+                const data = await res.json();
+
+                if (data.user) {
+                    setUser(data.user);
+                    await fetchGames(data.user.id);
+                    const resumeUrl = localStorage.getItem('resumeUrl');
+                    if (resumeUrl) {
+                        localStorage.removeItem('resumeUrl');
+                        navigate(resumeUrl);
+                    }
+                } else {
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error('Failed to fetch user:', err);
+                setLoading(false);
+            }
+        };
+        load();
+    }, [navigate]);
+
+    async function fetchGames(steamId) {
+        try {
+            const res = await fetch(`${API}/api/games/user/${steamId}`, {
+                credentials: 'include',
+            });
+            if (!res.ok) throw new Error(`GET /api/games/user/${steamId} -> ${res.status}`);
+            const data = await res.json();
+
+            setGames(data.allGames || []);
+            if (Array.isArray(data.topThree)) {
+                localStorage.setItem('topThree', JSON.stringify(data.topThree));
+                setTopGames(data.topThree);
+                setCustomSelection(data.topThree);
+            } else {
+                localStorage.removeItem('topThree');
+                setTopGames([]);
+            }
+            setLoading(false);
+        } catch (err) {
+            console.error('Failed to fetch games:', err);
+            setLoading(false);
+        }
+    }
+
+    const fetchRecommendations = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`${API}/api/recommend`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ gamesWithTags: topGames }),
+            });
+            if (!res.ok) throw new Error(`POST /api/recommend -> ${res.status}`);
+            const data = await res.json();
+            setRecommendations(data.recommendations);
+        } catch (err) {
+            setRecommendations('Failed to fetch recommendations.');
+            console.error('❌ Error fetching recommendations:', err);
+        }
         setLoading(false);
-      }
     };
-    load();
-  }, [navigate]);
 
-  async function fetchGames(steamId) {
-    try {
-      const res = await fetch(`${API}/api/games/user/${steamId}`, {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error(`GET /api/games/user/${steamId} -> ${res.status}`);
-      const data = await res.json();
+    // Animation loop (pause-aware)
+    useEffect(() => {
+        const animate = () => {
+            if (!paused) setRotation((prev) => prev + 0.05);
+            requestRef.current = requestAnimationFrame(animate);
+        };
+        requestRef.current = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(requestRef.current);
+    }, [paused]);
 
-      setGames(data.allGames || []);
-      if (Array.isArray(data.topThree)) {
-        localStorage.setItem('topThree', JSON.stringify(data.topThree));
-        setTopGames(data.topThree);
-        setCustomSelection(data.topThree);
-      } else {
-        localStorage.removeItem('topThree');
-        setTopGames([]);
-      }
-      setLoading(false);
-    } catch (err) {
-      console.error('Failed to fetch games:', err);
-      setLoading(false);
-    }
-  }
+    if (!API) return <p>Configuration error: API URL missing.</p>;
+    if (loading) return <p>Loading…</p>;
+    if (!user) return <p>You are not logged in with Steam.</p>;
 
-  const fetchRecommendations = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API}/api/recommend`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ gamesWithTags: topGames }),
-      });
-      if (!res.ok) throw new Error(`POST /api/recommend -> ${res.status}`);
-      const data = await res.json();
-      setRecommendations(data.recommendations);
-    } catch (err) {
-      setRecommendations('Failed to fetch recommendations.');
-      console.error('❌ Error fetching recommendations:', err);
-    }
-    setLoading(false);
-  };
-
-  // Animation loop (pause-aware)
-  useEffect(() => {
-    const animate = () => {
-      if (!paused) setRotation((prev) => prev + 0.05);
-      requestRef.current = requestAnimationFrame(animate);
-    };
-    requestRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(requestRef.current);
-  }, [paused]);
-
-  if (!API) {
-    return <p>Configuration error: API URL missing.</p>;
-  }
-
-  if (!user) return <p>You are not logged in with Steam.</p>;
-
-  // ... (UI unchanged below; you can keep your carousel & picker as-is)
-  // For brevity, keep your existing render JSX.
-  return (
-    <div className="gameai-wrapper">
-              <div className="profile-container">
+    // ... (UI unchanged below; you can keep your carousel & picker as-is)
+    // For brevity, keep your existing render JSX.
+    return (
+        <div className="gameai-wrapper">
+            <div className="profile-container">
                 <div className="gameai-content">
                     <div className="profile-header">
                         <img
@@ -311,7 +309,7 @@ function GameAI() {
                                     try {
                                         const enriched = await Promise.all(
                                             customSelection.map(async (game) => {
-                                                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/tags/${game.appid}`);
+                                                const res = await fetch(`${API}/api/tags/${game.appid}`);
                                                 if (!res.ok) throw new Error(`Failed to fetch tags for ${game.name}`);
                                                 const data = await res.json();
                                                 return { ...game, tags: data.tags || [] };
@@ -334,8 +332,8 @@ function GameAI() {
                     )}
                 </div>
             </div>
-    </div>
-  );
+        </div>
+    );
 }
 
 export default GameAI;

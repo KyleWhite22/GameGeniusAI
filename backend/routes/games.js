@@ -4,7 +4,7 @@ const axios = require('axios');
 
 router.get('/user/:steamId', async (req, res) => {
   const { steamId } = req.params;
-  const url = `http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env.STEAM_API_KEY}&steamid=${steamId}&format=json&include_appinfo=1`;
+  const url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env.STEAM_API_KEY}&steamid=${steamId}&format=json&include_appinfo=1`;
 
   try {
     const response = await axios.get(url);
