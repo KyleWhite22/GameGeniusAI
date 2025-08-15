@@ -65,6 +65,9 @@ process.on('uncaughtException', (err) => {
 app.get('/health', (_req, res) => {
   res.json({ ok: true, uptime: process.uptime() });
 });
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found', path: req.originalUrl });
+});
 // ✅ Start server
 try {
   app.listen(5000, '0.0.0.0', () => {
