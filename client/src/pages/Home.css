@@ -1,93 +1,157 @@
-/* ===== hard reset so nothing adds stray margins/widths ===== */
+/* ========== Desktop-first base ========== */
+:root{
+  --space-2:.5rem; --space-3:.75rem; --space-4:1rem;
+  --space-6:1.5rem; --space-8:2rem;
+  --fs-nav: 1.1rem;            /* desktop default */
+  --fs-name: 3.5rem;
+  --fs-tag: 1.6rem;
+}
+
 html, body, #root {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  min-height: 100%;
+  margin: 0; padding: 0; width: 100%; min-height: 100%;
   box-sizing: border-box;
 }
 *, *::before, *::after { box-sizing: inherit; }
 
-/* ===== wrapper: full bleed bg, but children centered ===== */
-.home-wrapper {
+/* Full-bleed background; center children with a max width */
+.home-wrapper{
   width: 100%;
-  min-height: 100svh; /* safer than 100vh on mobile */
+  min-height: 100svh;
   background: radial-gradient(ellipse at bottom, #0f0f0f 0%, #000000 100%);
   color: #00ffee;
   font-family: 'Orbitron', sans-serif;
-  padding: 1.5rem;
+  padding: var(--space-8);
   overflow-x: hidden;
 }
-
-/* center ALL direct children (nav + card) with a max width */
-.home-wrapper > * {
+.home-wrapper > *{
   width: min(1100px, 100%);
-  margin-inline: auto;           /* <-- centers regardless of inner flex rules */
+  margin-inline: auto;           /* centers nav + content on desktop */
 }
 
-/* keep nav links centered so nav itself can't "pull" left */
-.top-nav {
+/* ===== Top nav (desktop: right-aligned) ===== */
+.top-nav{
   display: flex;
-  justify-content: center;       /* stay centered on desktop too */
-  background: rgba(0,0,0,0.6);
+  justify-content: flex-end;     /* desktop-first: right */
+  background: rgba(0,0,0,.6);
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(0,255,255,0.1);
-  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(0,255,255,.1);
+  padding: var(--space-4) var(--space-8);
 }
-
-/* nav list wraps on small screens */
-.nav-links {
+.nav-links{
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
+  gap: 2rem;                     /* generous desktop spacing */
   align-items: center;
-  justify-content: center;
+  flex-wrap: nowrap;             /* no wrap on desktop */
 }
-
-/* content card stays centered and responsive */
-.home-content {
-  background: rgba(0,255,255,0.06);
-  border: 1px solid rgba(0,255,255,0.15);
-  box-shadow: 0 0 40px rgba(0,255,255,0.1);
-  backdrop-filter: blur(12px);
-  border-radius: 20px;
-  padding: clamp(1rem, 4vw, 4rem);
-  margin-top: 5vh;
-  text-align: center;
-}
-
-/* fluid sizes */
-.nav-link {
+.nav-link{
   color: #00ffee;
   font-weight: 600;
   text-decoration: none;
-  font-size: clamp(0.95rem, 2.4vw, 1.1rem);
-  padding: 0.5rem 0.9rem;
+  font-size: var(--fs-nav);
+  padding: .5rem 1rem;
   border-radius: 8px;
   line-height: 1.2;
-  transition: background 0.2s ease;
-  min-height: 36px;
-  display: inline-flex;
-  align-items: center;
+  transition: background .2s ease;
+  min-height: 40px; display:inline-flex; align-items:center;
 }
-.nav-link:hover { background-color: rgba(0,255,255,0.1); }
+.nav-link:hover{ background: rgba(0,255,255,.1); }
 
+/* ===== Main card (desktop) ===== */
+.home-content{
+  background: rgba(0,255,255,.06);
+  border: 1px solid rgba(0,255,255,.15);
+  box-shadow: 0 0 40px rgba(0,255,255,.1);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 4rem;                 /* desktop padding */
+  text-align: center;
+  margin-top: 5vh;
+  display:flex; flex-direction:column; align-items:center;
+}
+
+/* Avatar + type (desktop sizes) */
 .avatar {
-  width: clamp(120px, 45vw, 220px);
-  height: auto;
-  object-fit: cover;
-  border-radius: 16px;
-  border: 2px solid #00ffee;
-  box-shadow: 0 0 25px rgba(0,255,255,0.4);
-  margin-bottom: 1.5rem;
-  max-width: 100%;
+  width: 220px;          /* desktop width */
+  height: 300px;         /* force a consistent rectangle */
+  object-fit: cover;     /* crop rather than stretch */
+  border-radius: 0;      /* completely square corners */
+  border: 2px solid #ff0000;
+  box-shadow: 0 0 25px rgba(0, 255, 255, 0.4);
+  margin-bottom: 2rem;
 }
-.name   { font-size: clamp(1.8rem, 6vw, 3.5rem); font-weight: 800; margin: 0; text-shadow: 0 0 10px rgba(0,255,255,0.6); }
-.tagline{ font-size: clamp(1rem, 3.2vw, 1.6rem); color: #aaffff; margin-top: 1rem; max-width: 60ch; text-shadow: 0 0 5px rgba(0,255,255,0.2); }
+.name{
+  font-size: var(--fs-name);
+  font-weight: 800;
+  margin: 0;
+  color: #00ffee;
+  text-shadow: 0 0 10px rgba(0,255,255,.6);
+}
+.tagline{
+  font-size: var(--fs-tag);
+  color: #aaffff;
+  margin-top: 1.5rem;
+  max-width: 60ch;
+  text-shadow: 0 0 5px rgba(0,255,255,.2);
+}
 
-/* small-screen tighten */
-@media (max-width: 600px) {
-  .home-wrapper { padding: 1rem; }
-  .nav-links { gap: 0.6rem; }
-  .nav-link { padding: 0.4rem 0.7rem; }
+/* ========== Responsive overrides (down from desktop) ========== */
+
+/* Tablets and small laptops */
+@media (max-width: 1024px){
+  .home-wrapper{ padding: var(--space-6); }
+  .top-nav{ justify-content: center; padding: var(--space-4) var(--space-6); }
+  .nav-links{ gap: 1.25rem; flex-wrap: wrap; }  /* allow wrap on tablet */
+  .home-content{ padding: 2.5rem; }
+  .avatar{ width: 200px; }
+  .name{ font-size: 3rem; }
+  .tagline{ font-size: 1.4rem; }
 }
+
+/* Large phones / small tablets */
+@media (max-width: 768px){
+  .home-wrapper{ padding: var(--space-4); }
+  .nav-links{ gap: 1rem; }
+  .nav-link{ padding: .5rem .9rem; min-height: 36px; font-size: 1rem; }
+  .home-content{ padding: 1.6rem; margin-top: 3vh; }
+  .avatar{ width: 180px; }
+  .name{ font-size: 2.4rem; }
+  .tagline{ font-size: 1.2rem; }
+}
+
+/* Small phones */
+@media (max-width: 480px){
+  .nav-links{ gap: .6rem; justify-content: center; }
+  .nav-link{ padding: .4rem .7rem; font-size: .95rem; }
+  .home-content{ padding: 1.2rem; }
+  .avatar{ width: 150px; }
+  .name{ font-size: 2rem; }
+  .tagline{ font-size: 1.05rem; }
+}
+
+/* Preferences */
+@media (prefers-reduced-motion: reduce){
+  .nav-link, .home-content, .avatar{ transition: none !important; }
+}
+@media (prefers-contrast: more){
+  .home-content{ border-color: rgba(0,255,255,.35); }
+}
+img.avatar {
+  display: block;
+  width: 220px;             /* desktop width */
+  aspect-ratio: 3 / 4;      /* FORCE a rectangle */
+  height: auto;             /* ignored when aspect-ratio is set */
+  object-fit: cover;
+
+  /* Kill any rounded/full from elsewhere */
+  border-radius: 6px !important;  /* or 0 if you want sharp corners */
+  -webkit-border-radius: 6px !important;
+
+  border: 2px solid #00ffee;
+  box-shadow: 0 0 25px rgba(0,255,255,.4);
+}
+
+/* Nuclear reset in case a parent or global rule is rounding it */
+img.avatar, img.avatar * {
+  border-radius: 6 !important; /* set to 0 if you want perfectly square corners */
+}
+

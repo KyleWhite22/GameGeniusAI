@@ -131,7 +131,6 @@ function GameAI() {
     }, [paused]);
 
     if (!API) return <p>Configuration error: API URL missing.</p>;
-    if (loading) return <p>Loading…</p>;
     if (!user) return <p>You are not logged in with Steam.</p>;
 
     // ... (UI unchanged below; you can keep your carousel & picker as-is)
