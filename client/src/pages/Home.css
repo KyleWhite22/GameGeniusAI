@@ -1,91 +1,93 @@
-/* Full-screen neon background */
-.home-wrapper {
-  width: 100vw;
-  height: 100vh;
-  background: radial-gradient(ellipse at bottom, #0f0f0f 0%, #000000 100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 2rem;
-  box-sizing: border-box;
-  font-family: 'Orbitron', sans-serif; /* Use a futuristic font */
-  color: #00ffee;
-  overflow: hidden;
-}
-
-/* Top nav bar */
-.top-nav {
+/* ===== hard reset so nothing adds stray margins/widths ===== */
+html, body, #root {
+  margin: 0;
+  padding: 0;
   width: 100%;
-  padding: 1.5rem 2rem;
-  display: flex;
-  justify-content: flex-end;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(0, 255, 255, 0.1);
-  z-index: 10;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+*, *::before, *::after { box-sizing: inherit; }
+
+/* ===== wrapper: full bleed bg, but children centered ===== */
+.home-wrapper {
+  width: 100%;
+  min-height: 100svh; /* safer than 100vh on mobile */
+  background: radial-gradient(ellipse at bottom, #0f0f0f 0%, #000000 100%);
+  color: #00ffee;
+  font-family: 'Orbitron', sans-serif;
+  padding: 1.5rem;
+  overflow-x: hidden;
 }
 
+/* center ALL direct children (nav + card) with a max width */
+.home-wrapper > * {
+  width: min(1100px, 100%);
+  margin-inline: auto;           /* <-- centers regardless of inner flex rules */
+}
+
+/* keep nav links centered so nav itself can't "pull" left */
+.top-nav {
+  display: flex;
+  justify-content: center;       /* stay centered on desktop too */
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(0,255,255,0.1);
+  padding: 1rem 1.25rem;
+}
+
+/* nav list wraps on small screens */
 .nav-links {
   display: flex;
-  gap: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
 }
 
+/* content card stays centered and responsive */
+.home-content {
+  background: rgba(0,255,255,0.06);
+  border: 1px solid rgba(0,255,255,0.15);
+  box-shadow: 0 0 40px rgba(0,255,255,0.1);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: clamp(1rem, 4vw, 4rem);
+  margin-top: 5vh;
+  text-align: center;
+}
+
+/* fluid sizes */
 .nav-link {
   color: #00ffee;
   font-weight: 600;
   text-decoration: none;
-  font-size: 1.1rem;
-  padding: 0.5rem 1rem;
+  font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+  padding: 0.5rem 0.9rem;
   border-radius: 8px;
+  line-height: 1.2;
   transition: background 0.2s ease;
-}
-
-.nav-link:hover {
-  background-color: rgba(0, 255, 255, 0.1);
-}
-
-/* Central card layout */
-.home-content {
-  background: rgba(0, 255, 255, 0.06);
-  border: 1px solid rgba(0, 255, 255, 0.15);
-  box-shadow: 0 0 40px rgba(0, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  border-radius: 20px;
-  padding: 4rem;
-  text-align: center;
-  max-width: 800px;
-  width: 100%;
-  margin-top: 5vh;
-  display: flex;
-  flex-direction: column;
+  min-height: 36px;
+  display: inline-flex;
   align-items: center;
 }
+.nav-link:hover { background-color: rgba(0,255,255,0.1); }
 
-/* Profile image with neon frame */
 .avatar {
-  width: 220px;
+  width: clamp(120px, 45vw, 220px);
   height: auto;
   object-fit: cover;
   border-radius: 16px;
   border: 2px solid #00ffee;
-  box-shadow: 0 0 25px rgba(0, 255, 255, 0.4);
-  margin-bottom: 2rem;
+  box-shadow: 0 0 25px rgba(0,255,255,0.4);
+  margin-bottom: 1.5rem;
+  max-width: 100%;
 }
+.name   { font-size: clamp(1.8rem, 6vw, 3.5rem); font-weight: 800; margin: 0; text-shadow: 0 0 10px rgba(0,255,255,0.6); }
+.tagline{ font-size: clamp(1rem, 3.2vw, 1.6rem); color: #aaffff; margin-top: 1rem; max-width: 60ch; text-shadow: 0 0 5px rgba(0,255,255,0.2); }
 
-/* Futuristic name text */
-.name {
-  font-size: 3.5rem;
-  font-weight: 800;
-  margin: 0;
-  color: #00ffee;
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
-}
-
-/* Subtitle / tagline */
-.tagline {
-  font-size: 1.6rem;
-  color: #aaffff;
-  margin-top: 1.5rem;
-  max-width: 600px;
-  text-shadow: 0 0 5px rgba(0, 255, 255, 0.2);
+/* small-screen tighten */
+@media (max-width: 600px) {
+  .home-wrapper { padding: 1rem; }
+  .nav-links { gap: 0.6rem; }
+  .nav-link { padding: 0.4rem 0.7rem; }
 }
