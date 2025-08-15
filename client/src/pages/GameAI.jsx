@@ -21,7 +21,14 @@ function GameAI() {
     });
     const [paused, setPaused] = useState(false);
     const [pendingRatingAppId, setPendingRatingAppId] = useState(null);
+    const rawAvatar =
+        user?.photos?.[2]?.value ??
+        user?.photos?.[0]?.value ??
+        user?._json?.avatarfull ??
+        user?.avatarfull ??
+        '';
 
+    const avatar = rawAvatar ? rawAvatar.replace(/^http:\/\//, 'https://') : '';
     const setRating = (appid, value) => {
         const updated = { ...ratings, [appid]: value };
         setRatings(updated);
@@ -140,11 +147,20 @@ function GameAI() {
             <div className="profile-container">
                 <div className="gameai-content">
                     <div className="profile-header">
-                        <img
-                            className="avatar"
-                            src={user.photos[2]?.value || user.photos[0].value}
-                            alt="avatar"
-                        />
+                        {avatar ? (
+                            <img
+                                className="avatar"
+                                src={avatar}
+                                alt={`${user.displayName} avatar`}
+                                onError={(e) => {
+                                    // fallback if the URL is dead
+                                    e.currentTarget.src = '/fallback-avatar.png';
+                                }}
+                            />
+                        ) : (
+                            // optional: simple placeholder if no avatar at all
+                            <div className="avatar" style={{ background: '#033', display: 'inline-block' }} />
+                        )}
                         <h1 className="username">{user.displayName}</h1>
                     </div>
 
