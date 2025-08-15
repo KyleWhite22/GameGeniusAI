@@ -148,7 +148,7 @@ function GameAI() {
                         <h1 className="username">{user.displayName}</h1>
                     </div>
 
-                    <p className="steam-games-title">Your Steam Games:</p>
+                    <p className="steam-games-title">Games You've Played:</p>
 
                     <div className="carousel-container">
                         {paused && <div className="pause-overlay"></div>}
