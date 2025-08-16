@@ -498,3 +498,19 @@ html, body {
   background: #00ff00;
   color: #000;
 }
+.steam-privacy-instructions {
+  margin: 2rem auto;
+  max-width: 600px;
+  padding: 1.5rem;
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 10px;
+  color: #eee;
+  line-height: 1.6;
+}
+
+.steam-privacy-instructions h2 {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  color: #47cfb6;
+}

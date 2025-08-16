@@ -57,6 +57,21 @@ function GameAI() {
         setRatingModal({ open: false, game: null, temp: 0 });
         document.body.classList.remove('no-scroll');
     }
+    function SteamPrivacyInstructions() {
+        return (
+            <div className="steam-privacy-instructions">
+                <h2>📢 Make Sure Your Steam Game Details Are Public</h2>
+                <ol>
+                    <li>Open <strong>Steam</strong> and log in.</li>
+                    <li>Click your name in the top-right → <strong>View my profile</strong>.</li>
+                    <li>On your profile page, click <strong>Edit Profile</strong> → <strong>Privacy Settings</strong>.</li>
+                    <li>Under <strong>Game details</strong>, set it to <strong>Public</strong>.</li>
+                    <li>Uncheck <strong>“Always keep my total playtime private”</strong>.</li>
+                    <li>Refresh this page and your games should appear! ✅</li>
+                </ol>
+            </div>
+        );
+    }
     const avatar = rawAvatar ? rawAvatar.replace(/^http:\/\//, 'https://') : '';
     const setRating = (appid, value) => {
         const updated = { ...ratings, [appid]: value };
@@ -209,219 +224,221 @@ function GameAI() {
 
                     {/* Title */}
                     <p className="steam-games-title">Games You've Played:</p>
+                    {games.length === 0 ? (
+                        <SteamPrivacyInstructions />
+                    ) : (
 
-                    {/* Carousel */}
-                    <div className={`carousel-container ${paused ? 'is-paused' : ''}`}>
-                        {paused && <div className="pause-overlay"></div>}
-                        <div className="carousel-wrapper">
-                            <div className="carousel-inner">
-                                {games.map((game, index) => {
-                                    const angle = (360 / games.length) * index;
-                                    const angleWithRotation = angle + rotation;
-                                    const rad = (angleWithRotation * Math.PI) / 180;
-                                    const isVisible = Math.cos(rad) > 0.5;
-                                    const dipAmount = -60;
-                                    const yOffset = -Math.cos(rad) * dipAmount + dipAmount;
+                        < div className={`carousel-container ${paused ? 'is-paused' : ''}`}>
+                    {paused && <div className="pause-overlay"></div>}
+                    <div className="carousel-wrapper">
+                        <div className="carousel-inner">
+                            {games.map((game, index) => {
+                                const angle = (360 / games.length) * index;
+                                const angleWithRotation = angle + rotation;
+                                const rad = (angleWithRotation * Math.PI) / 180;
+                                const isVisible = Math.cos(rad) > 0.5;
+                                const dipAmount = -60;
+                                const yOffset = -Math.cos(rad) * dipAmount + dipAmount;
 
-                                    return (
-                                        <div
-                                            key={game.appid}
-                                            className={`game-card ${isVisible ? 'visible' : ''}`}
-                                            style={{
-                                                transform: `
+                                return (
+                                    <div
+                                        key={game.appid}
+                                        className={`game-card ${isVisible ? 'visible' : ''}`}
+                                        style={{
+                                            transform: `
                         rotateY(${angleWithRotation}deg)
                         translateZ(500px)
                         translateY(${yOffset}px)
                       `,
-                                            }}
-                                            onClick={() => openRatingModal(game)}
-                                        >
-                                            <img
-                                                className="game-image"
-                                                src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
-                                                alt={game.name}
-                                                onError={(e) => (e.currentTarget.style.display = 'none')}
-                                            />
-                                            
-                                            <div className="game-info">
-                                                <p>{game.name}</p>
-                                                {(
-  <div className="rated-stars-badge" aria-label={`Rated ${ratings[game.appid]} out of 5`}>
-    {[1,2,3,4,5].map((s) => (
-      <span key={s} className={`star ${ratings[game.appid] >= s ? 'filled' : ''}`}>★</span>
-    ))}
-  </div>
-)}
-                                                <p>{Math.round(game.playtime_forever / 60)} hrs</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Recommender */}
-                    <div className="chatbot-container">
-                        <h1>GameGeniusAI Recommender</h1>
-
-                        <p className="chatbot-subtext">Chosen Games ({topGames.length}/3)</p>
-                        <div className="top-games inside">
-                            {topGames.map((game) => (
-                                <div className="top-game-large" key={game.appid}>
-                                    <img
-                                        className="top-game-image"
-                                        src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
-                                        alt={game.name}
-                                        onError={(e) => (e.currentTarget.style.display = 'none')}
-                                    />
-                                    <div className="top-game-info">
-                                        <p>{game.name}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <button
-                            className="customize-button"
-                            onClick={() => {
-                                // optional: start fresh selection
-                                setCustomSelection([]);
-                                setShowGamePicker(true);
-                            }}
-                        >
-                            Customize Games
-                        </button>
-
-                        <div className="cube-button-container" onClick={fetchRecommendations}>
-                            <div className="cube-label">{loading ? 'Thinking...' : 'Get Recommendations'}</div>
-                            <div className={`globe-container ${loading ? 'loading' : ''}`}>
-                                <div className="globe">
-                                    {[...Array(6)].map((_, i) => (
-                                        <div key={`lat-${i}`} className="latitude" style={{ transform: `rotateX(${i * 30}deg)` }} />
-                                    ))}
-                                    {[...Array(6)].map((_, i) => (
-                                        <div key={`lon-${i}`} className="longitude" style={{ transform: `rotateY(${i * 30}deg)` }} />
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {recommendations && (
-                            <div className="recommendation-output">
-                                <p className="recommendation-header">
-                                    Based on your selected games, GameGeniusAI recommends:
-                                </p>
-                                <pre className="recommendation-text">{recommendations}</pre>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Game Picker Modal */}
-                    {showGamePicker && (
-                        <div className="game-picker-modal">
-                            <h2>Select up to 3 Games ({customSelection.length}/3)</h2>
-                            <div className="game-picker-list">
-                                {games.map((game) => (
-                                    <div
-                                        key={game.appid}
-                                        className={`game-picker-item ${customSelection.find((g) => g.appid === game.appid) ? 'selected' : ''
-                                            }`}
-                                        onClick={() => {
-                                            setCustomSelection((prev) => {
-                                                if (prev.some((g) => g.appid === game.appid)) {
-                                                    return prev.filter((g) => g.appid !== game.appid);
-                                                }
-                                                if (prev.length < 3) return [...prev, game];
-                                                return [...prev.slice(1), game];
-                                            });
                                         }}
+                                        onClick={() => openRatingModal(game)}
                                     >
                                         <img
+                                            className="game-image"
                                             src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
                                             alt={game.name}
+                                            onError={(e) => (e.currentTarget.style.display = 'none')}
                                         />
-                                        <p>{game.name}</p>
+
+                                        <div className="game-info">
+                                            <p>{game.name}</p>
+                                            {(
+                                                <div className="rated-stars-badge" aria-label={`Rated ${ratings[game.appid]} out of 5`}>
+                                                    {[1, 2, 3, 4, 5].map((s) => (
+                                                        <span key={s} className={`star ${ratings[game.appid] >= s ? 'filled' : ''}`}>★</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <p>{Math.round(game.playtime_forever / 60)} hrs</p>
+                                        </div>
                                     </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+)}
+                {/* Recommender */}
+                <div className="chatbot-container">
+                    <h1>GameGeniusAI Recommender</h1>
+
+                    <p className="chatbot-subtext">Chosen Games ({topGames.length}/3)</p>
+                    <div className="top-games inside">
+                        {topGames.map((game) => (
+                            <div className="top-game-large" key={game.appid}>
+                                <img
+                                    className="top-game-image"
+                                    src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
+                                    alt={game.name}
+                                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                                />
+                                <div className="top-game-info">
+                                    <p>{game.name}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <button
+                        className="customize-button"
+                        onClick={() => {
+                            // optional: start fresh selection
+                            setCustomSelection([]);
+                            setShowGamePicker(true);
+                        }}
+                    >
+                        Customize Games
+                    </button>
+
+                    <div className="cube-button-container" onClick={fetchRecommendations}>
+                        <div className="cube-label">{loading ? 'Thinking...' : 'Get Recommendations'}</div>
+                        <div className={`globe-container ${loading ? 'loading' : ''}`}>
+                            <div className="globe">
+                                {[...Array(6)].map((_, i) => (
+                                    <div key={`lat-${i}`} className="latitude" style={{ transform: `rotateX(${i * 30}deg)` }} />
+                                ))}
+                                {[...Array(6)].map((_, i) => (
+                                    <div key={`lon-${i}`} className="longitude" style={{ transform: `rotateY(${i * 30}deg)` }} />
                                 ))}
                             </div>
-                            <button
-                                className="save-button"
-                                disabled={customSelection.length === 0 || customSelection.length > 3}
-                                onClick={async () => {
-                                    try {
-                                        const enriched = await Promise.all(
-                                            customSelection.map(async (game) => {
-                                                const res = await fetch(`${API}/api/tags/${game.appid}`);
-                                                if (!res.ok) throw new Error(`Failed to fetch tags for ${game.name}`);
-                                                const data = await res.json();
-                                                return { ...game, tags: data.tags || [] };
-                                            })
-                                        );
-                                        setTopGames(enriched);
-                                        localStorage.setItem('topThree', JSON.stringify(enriched));
-                                        setShowGamePicker(false);
-                                    } catch (err) {
-                                        console.error('❌ Failed to fetch tags or save selection:', err);
-                                        alert('Failed to save selection. Check console for errors.');
-                                    }
-                                }}
-                            >
-                                Save Selection
-                            </button>
                         </div>
-                    )}
+                    </div>
 
-                    {/* Rating Modal */}
-                    {ratingModal.open && ratingModal.game && (
-                        <div className="rating-modal-backdrop" onClick={closeRatingModal} role="dialog" aria-modal="true">
-                            <div className="rating-modal" onClick={(e) => e.stopPropagation()}>
-                                <button className="modal-close" aria-label="Close" onClick={closeRatingModal}>
-                                    ×
-                                </button>
-
-                                <div className="rating-modal-header">
-                                    <img
-                                        src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${ratingModal.game.appid}/header.jpg`}
-                                        alt={ratingModal.game.name}
-                                        onError={(e) => (e.currentTarget.style.display = 'none')}
-                                    />
-                                    <h3>{ratingModal.game.name}</h3>
-                                </div>
-
-                                <div className="rating-modal-stars">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <span
-                                            key={star}
-                                            className={`star ${ratingModal.temp >= star ? 'filled' : ''} clickable`}
-                                            onClick={() => setRatingModal((m) => ({ ...m, temp: star }))}
-                                        >
-                                            ★
-                                        </span>
-                                    ))}
-                                </div>
-
-                                <div className="rating-modal-actions">
-                                    <button
-                                        className="submit-rating-btn"
-                                        onClick={() => {
-                                            setRating(ratingModal.game.appid, ratingModal.temp);
-                                            closeRatingModal();
-                                        }}
-                                        disabled={ratingModal.temp === 0}
-                                    >
-                                        Submit
-                                    </button>
-                                    <button className="cancel-rating-btn" onClick={closeRatingModal}>
-                                        Cancel
-                                    </button>
-                                </div>
-                            </div>
+                    {recommendations && (
+                        <div className="recommendation-output">
+                            <p className="recommendation-header">
+                                Based on your selected games, GameGeniusAI recommends:
+                            </p>
+                            <pre className="recommendation-text">{recommendations}</pre>
                         </div>
                     )}
                 </div>
+
+                {/* Game Picker Modal */}
+                {showGamePicker && (
+                    <div className="game-picker-modal">
+                        <h2>Select up to 3 Games ({customSelection.length}/3)</h2>
+                        <div className="game-picker-list">
+                            {games.map((game) => (
+                                <div
+                                    key={game.appid}
+                                    className={`game-picker-item ${customSelection.find((g) => g.appid === game.appid) ? 'selected' : ''
+                                        }`}
+                                    onClick={() => {
+                                        setCustomSelection((prev) => {
+                                            if (prev.some((g) => g.appid === game.appid)) {
+                                                return prev.filter((g) => g.appid !== game.appid);
+                                            }
+                                            if (prev.length < 3) return [...prev, game];
+                                            return [...prev.slice(1), game];
+                                        });
+                                    }}
+                                >
+                                    <img
+                                        src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
+                                        alt={game.name}
+                                    />
+                                    <p>{game.name}</p>
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            className="save-button"
+                            disabled={customSelection.length === 0 || customSelection.length > 3}
+                            onClick={async () => {
+                                try {
+                                    const enriched = await Promise.all(
+                                        customSelection.map(async (game) => {
+                                            const res = await fetch(`${API}/api/tags/${game.appid}`);
+                                            if (!res.ok) throw new Error(`Failed to fetch tags for ${game.name}`);
+                                            const data = await res.json();
+                                            return { ...game, tags: data.tags || [] };
+                                        })
+                                    );
+                                    setTopGames(enriched);
+                                    localStorage.setItem('topThree', JSON.stringify(enriched));
+                                    setShowGamePicker(false);
+                                } catch (err) {
+                                    console.error('❌ Failed to fetch tags or save selection:', err);
+                                    alert('Failed to save selection. Check console for errors.');
+                                }
+                            }}
+                        >
+                            Save Selection
+                        </button>
+                    </div>
+                )}
+
+                {/* Rating Modal */}
+                {ratingModal.open && ratingModal.game && (
+                    <div className="rating-modal-backdrop" onClick={closeRatingModal} role="dialog" aria-modal="true">
+                        <div className="rating-modal" onClick={(e) => e.stopPropagation()}>
+                            <button className="modal-close" aria-label="Close" onClick={closeRatingModal}>
+                                ×
+                            </button>
+
+                            <div className="rating-modal-header">
+                                <img
+                                    src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${ratingModal.game.appid}/header.jpg`}
+                                    alt={ratingModal.game.name}
+                                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                                />
+                                <h3>{ratingModal.game.name}</h3>
+                            </div>
+
+                            <div className="rating-modal-stars">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <span
+                                        key={star}
+                                        className={`star ${ratingModal.temp >= star ? 'filled' : ''} clickable`}
+                                        onClick={() => setRatingModal((m) => ({ ...m, temp: star }))}
+                                    >
+                                        ★
+                                    </span>
+                                ))}
+                            </div>
+
+                            <div className="rating-modal-actions">
+                                <button
+                                    className="submit-rating-btn"
+                                    onClick={() => {
+                                        setRating(ratingModal.game.appid, ratingModal.temp);
+                                        closeRatingModal();
+                                    }}
+                                    disabled={ratingModal.temp === 0}
+                                >
+                                    Submit
+                                </button>
+                                <button className="cancel-rating-btn" onClick={closeRatingModal}>
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
+        </div >
     );
 }
 
