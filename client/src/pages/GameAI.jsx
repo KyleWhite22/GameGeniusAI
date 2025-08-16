@@ -3,7 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import './GameAI.css';
 
 const API = import.meta.env.VITE_API_URL;
+async function getTagsForApp(appid) {
+  const res = await fetch(`${API}/api/tags/${appid}`);
+  if (!res.ok) throw new Error(`Failed to fetch tags for app ${appid}`);
+  const data = await res.json();
+  return Array.isArray(data.tags) ? data.tags : [];
+}
 
+async function enrichWithTags(games) {
+  const enriched = await Promise.all(
+    games.map(async (g) => {
+      // keep existing tags if present and non-empty
+      if (Array.isArray(g.tags) && g.tags.length) return g;
+      const tags = await getTagsForApp(g.appid);
+      return { ...g, tags };
+    })
+  );
+  return enriched;
+}
 function GameAI() {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
@@ -35,22 +52,28 @@ function GameAI() {
         localStorage.setItem('gameRatings', JSON.stringify(updated));
     };
 
-    // 1) Load cached topThree on mount
-    useEffect(() => {
-        try {
-            const stored = localStorage.getItem('topThree');
-            if (stored && stored !== 'undefined') {
-                const parsed = JSON.parse(stored);
-                setTopGames(parsed);
-                setCustomSelection(parsed);
-            } else {
-                setTopGames([]);
-            }
-        } catch (err) {
-            console.error('❌ Failed to parse topThree:', err);
-            setTopGames([]);
-        }
-    }, []);
+   // 1) Load cached topThree on mount (and enrich with tags if missing)
+useEffect(() => {
+  (async () => {
+    try {
+      const stored = localStorage.getItem('topThree');
+      if (stored && stored !== 'undefined') {
+        const parsed = JSON.parse(stored) || [];
+        const needsTags = parsed.some(g => !Array.isArray(g.tags) || g.tags.length === 0);
+        const finalTop = needsTags ? await enrichWithTags(parsed) : parsed;
+
+        setTopGames(finalTop);
+        setCustomSelection(finalTop);
+        if (needsTags) localStorage.setItem('topThree', JSON.stringify(finalTop));
+      } else {
+        setTopGames([]);
+      }
+    } catch (err) {
+      console.error('❌ Failed to parse/enrich topThree:', err);
+      setTopGames([]);
+    }
+  })();
+}, []);
 
     // 2) Load user → games → resume
     useEffect(() => {
@@ -84,52 +107,60 @@ function GameAI() {
         load();
     }, [navigate]);
 
-    async function fetchGames(steamId) {
-        try {
-            const res = await fetch(`${API}/api/games/user/${steamId}`, {
-                credentials: 'include',
-            });
-            if (!res.ok) throw new Error(`GET /api/games/user/${steamId} -> ${res.status}`);
-            const data = await res.json();
+  async function fetchGames(steamId) {
+  try {
+    const res = await fetch(`${API}/api/games/user/${steamId}`, { credentials: 'include' });
+    if (!res.ok) throw new Error(`GET /api/games/user/${steamId} -> ${res.status}`);
+    const data = await res.json();
 
-            setGames(data.allGames || []);
-            if (Array.isArray(data.topThree)) {
-                localStorage.setItem('topThree', JSON.stringify(data.topThree));
-                setTopGames(data.topThree);
-                setCustomSelection(data.topThree);
-            } else {
-                localStorage.removeItem('topThree');
-                setTopGames([]);
-            }
-            setLoading(false);
-        } catch (err) {
-            console.error('Failed to fetch games:', err);
-            setLoading(false);
-        }
+    setGames(data.allGames || []);
+
+    if (Array.isArray(data.topThree) && data.topThree.length) {
+      const needsTags = data.topThree.some(g => !Array.isArray(g.tags) || g.tags.length === 0);
+      const finalTop = needsTags ? await enrichWithTags(data.topThree) : data.topThree;
+
+      setTopGames(finalTop);
+      setCustomSelection(finalTop);
+      localStorage.setItem('topThree', JSON.stringify(finalTop));
+    } else {
+      localStorage.removeItem('topThree');
+      setTopGames([]);
+      setCustomSelection([]);
     }
+    setLoading(false);
+  } catch (err) {
+    console.error('Failed to fetch games:', err);
+    setLoading(false);
+  }
+}
 
-    const fetchRecommendations = async () => {
-        if (!topGames.length) {
-            setRecommendations('Pick at least 1 game to get recommendations.');
-            return;
-        }
-        setLoading(true);
-        try {
-            const res = await fetch(`${API}/api/recommend`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ gamesWithTags: topGames }),
-            });
-            if (!res.ok) throw new Error(`POST /api/recommend -> ${res.status}`);
-            const data = await res.json();
-            setRecommendations(data.recommendations);
-        } catch (err) {
-            setRecommendations('Failed to fetch recommendations.');
-            console.error('❌ Error fetching recommendations:', err);
-        }
-        setLoading(false);
-    };
+  const fetchRecommendations = async () => {
+  if (!topGames.length) {
+    setRecommendations('Pick at least 1 game to get recommendations.');
+    return;
+  }
+  setLoading(true);
+  try {
+    const ensured = await enrichWithTags(topGames);
+    if (ensured !== topGames) {
+      setTopGames(ensured);
+      localStorage.setItem('topThree', JSON.stringify(ensured));
+    }
+    const res = await fetch(`${API}/api/recommend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ gamesWithTags: ensured }),
+    });
+    if (!res.ok) throw new Error(`POST /api/recommend -> ${res.status}`);
+    const data = await res.json();
+    setRecommendations(data.recommendations);
+  } catch (err) {
+    setRecommendations('Failed to fetch recommendations.');
+    console.error('❌ Error fetching recommendations:', err);
+  }
+  setLoading(false);
+};
 
     // Animation loop (pause-aware)
     useEffect(() => {
