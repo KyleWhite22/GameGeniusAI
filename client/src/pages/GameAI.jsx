@@ -109,6 +109,10 @@ function GameAI() {
     }
 
     const fetchRecommendations = async () => {
+        if (!topGames.length) {
+            setRecommendations('Pick at least 1 game to get recommendations.');
+            return;
+        }
         setLoading(true);
         try {
             const res = await fetch(`${API}/api/recommend`, {
@@ -248,7 +252,7 @@ function GameAI() {
                         <h1>GameGeniusAI Recommender</h1>
 
 
-                        <p className="chatbot-subtext">3 Chosen Games</p>
+                        <p className="chatbot-subtext"> Chosen Games ({topGames.length}/3)</p>
                         <div className="top-games inside">
                             {topGames.map((game) => (
                                 <div className="top-game-large" key={game.appid}>
@@ -289,7 +293,7 @@ function GameAI() {
                         {recommendations && (
                             <div className="recommendation-output">
                                 <p className="recommendation-header">
-                                    Based on your 3 selected games, GameGeniusAI recommends:
+                                    Based on your selected games, GameGeniusAI recommends:
                                 </p>
                                 <pre className="recommendation-text">{recommendations}</pre>
                             </div>
@@ -298,7 +302,7 @@ function GameAI() {
 
                     {showGamePicker && (
                         <div className="game-picker-modal">
-                            <h2>Select 3 Games</h2>
+                            <h2>Select up to 3 Games ({customSelection.length}/3)</h2>
                             <div className="game-picker-list">
                                 {games.map(game => (
                                     <div
@@ -330,7 +334,7 @@ function GameAI() {
                             </div>
                             <button
                                 className="save-button"
-                                disabled={customSelection.length !== 3}
+                                disabled={customSelection.length === 0 || customSelection.length > 3}
                                 onClick={async () => {
                                     try {
                                         const enriched = await Promise.all(
