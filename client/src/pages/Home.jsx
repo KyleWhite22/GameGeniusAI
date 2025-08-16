@@ -11,7 +11,7 @@ function Home() {
             <Link to="/personal" className="nav-link">Personal</Link>
             <Link to="/education" className="nav-link">Education</Link>
             <Link to="/work" className="nav-link">Work</Link>
-            <Link to="/GameAILogin" className="nav-link">GameBuddyAI</Link>
+            <Link to="/GameAILogin" className="nav-link">GameGeniusAI</Link>
           </nav>
         </header>
 
