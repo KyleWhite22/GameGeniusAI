@@ -286,7 +286,7 @@ function GameAI() {
                             className="customize-button"
                             onClick={() => {
                                 // optional: start fresh selection
-                                // setCustomSelection([]);
+                                setCustomSelection([]);
                                 setShowGamePicker(true);
                             }}
                         >
