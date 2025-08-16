@@ -16,7 +16,7 @@ function GameAILogin() {
 
   return (
     <div className="home-container">
-      <h1>GameBuddy AI</h1>
+      <h1>GameGeniusAI</h1>
       <p>Recommends you video games!</p>
 
       <button className="steam-login-btn" onClick={handleSteamLogin}>

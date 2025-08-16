@@ -245,7 +245,7 @@ function GameAI() {
                     </div>
 
                     <div className="chatbot-container">
-                        <h1>AI Game Recommender</h1>
+                        <h1>GameGeniusAI Recommender</h1>
 
 
                         <p className="chatbot-subtext">3 Chosen Games</p>
@@ -284,7 +284,7 @@ function GameAI() {
                         {recommendations && (
                             <div className="recommendation-output">
                                 <p className="recommendation-header">
-                                    Based on your 3 selected games, we recommend:
+                                    Based on your 3 selected games, GameGeniusAI recommends:
                                 </p>
                                 <pre className="recommendation-text">{recommendations}</pre>
                             </div>
