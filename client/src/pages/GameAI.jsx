@@ -265,7 +265,12 @@ function GameAI() {
                             ))}
                         </div>
 
-                        <button className="customize-button" onClick={() => setShowGamePicker(true)}>
+                        <button
+                            className="customize-button"
+                            onClick={() => {
+                                setShowGamePicker(true);
+                            }}
+                        >
                             Customize Games
                         </button>
                         <div className="cube-button-container" onClick={fetchRecommendations}>
@@ -302,10 +307,16 @@ function GameAI() {
                                             }`}
                                         onClick={() => {
                                             setCustomSelection(prev => {
-                                                const exists = prev.find(g => g.appid === game.appid);
-                                                if (exists) return prev.filter(g => g.appid !== game.appid);
-                                                if (prev.length < 3) return [...prev, game];
-                                                return prev;
+                                                // already selected? toggle off
+                                                if (prev.some(g => g.appid === game.appid)) {
+                                                    return prev.filter(g => g.appid !== game.appid);
+                                                }
+                                                // room left? add it
+                                                if (prev.length < 3) {
+                                                    return [...prev, game];
+                                                }
+                                                // at 3 already? replace the oldest (no manual deselect needed)
+                                                return [...prev.slice(1), game];
                                             });
                                         }}
                                     >
