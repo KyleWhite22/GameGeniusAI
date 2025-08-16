@@ -60,14 +60,14 @@ function GameAI() {
     function SteamPrivacyInstructions() {
         return (
             <div className="steam-privacy-instructions">
-                <h2>📢 Make Sure Your Steam Game Details Are Public</h2>
+                <h2>Make Sure Your Steam Game Details Are Public</h2>
                 <ol>
                     <li>Open <strong>Steam</strong> and log in.</li>
                     <li>Click your name in the top-right → <strong>View my profile</strong>.</li>
                     <li>On your profile page, click <strong>Edit Profile</strong> → <strong>Privacy Settings</strong>.</li>
                     <li>Under <strong>Game details</strong>, set it to <strong>Public</strong>.</li>
                     <li>Uncheck <strong>“Always keep my total playtime private”</strong>.</li>
-                    <li>Refresh this page and your games should appear! ✅</li>
+                    <li>Refresh this page and your games should appear!</li>
                 </ol>
             </div>
         );
