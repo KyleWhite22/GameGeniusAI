@@ -4,22 +4,22 @@ import './GameAI.css';
 
 const API = import.meta.env.VITE_API_URL;
 async function getTagsForApp(appid) {
-  const res = await fetch(`${API}/api/tags/${appid}`);
-  if (!res.ok) throw new Error(`Failed to fetch tags for app ${appid}`);
-  const data = await res.json();
-  return Array.isArray(data.tags) ? data.tags : [];
+    const res = await fetch(`${API}/api/tags/${appid}`);
+    if (!res.ok) throw new Error(`Failed to fetch tags for app ${appid}`);
+    const data = await res.json();
+    return Array.isArray(data.tags) ? data.tags : [];
 }
 
 async function enrichWithTags(games) {
-  const enriched = await Promise.all(
-    games.map(async (g) => {
-      // keep existing tags if present and non-empty
-      if (Array.isArray(g.tags) && g.tags.length) return g;
-      const tags = await getTagsForApp(g.appid);
-      return { ...g, tags };
-    })
-  );
-  return enriched;
+    const enriched = await Promise.all(
+        games.map(async (g) => {
+            // keep existing tags if present and non-empty
+            if (Array.isArray(g.tags) && g.tags.length) return g;
+            const tags = await getTagsForApp(g.appid);
+            return { ...g, tags };
+        })
+    );
+    return enriched;
 }
 function GameAI() {
     const navigate = useNavigate();
@@ -44,7 +44,19 @@ function GameAI() {
         user?._json?.avatarfull ??
         user?.avatarfull ??
         '';
+    const [ratingModal, setRatingModal] = useState({ open: false, game: null, temp: 0 });
 
+    function openRatingModal(game) {
+        setPaused(true);
+        setRatingModal({ open: true, game, temp: ratings[game.appid] || 0 });
+        document.body.classList.add('no-scroll');
+    }
+
+    function closeRatingModal() {
+        setPaused(false);
+        setRatingModal({ open: false, game: null, temp: 0 });
+        document.body.classList.remove('no-scroll');
+    }
     const avatar = rawAvatar ? rawAvatar.replace(/^http:\/\//, 'https://') : '';
     const setRating = (appid, value) => {
         const updated = { ...ratings, [appid]: value };
@@ -52,28 +64,28 @@ function GameAI() {
         localStorage.setItem('gameRatings', JSON.stringify(updated));
     };
 
-   // 1) Load cached topThree on mount (and enrich with tags if missing)
-useEffect(() => {
-  (async () => {
-    try {
-      const stored = localStorage.getItem('topThree');
-      if (stored && stored !== 'undefined') {
-        const parsed = JSON.parse(stored) || [];
-        const needsTags = parsed.some(g => !Array.isArray(g.tags) || g.tags.length === 0);
-        const finalTop = needsTags ? await enrichWithTags(parsed) : parsed;
+    // 1) Load cached topThree on mount (and enrich with tags if missing)
+    useEffect(() => {
+        (async () => {
+            try {
+                const stored = localStorage.getItem('topThree');
+                if (stored && stored !== 'undefined') {
+                    const parsed = JSON.parse(stored) || [];
+                    const needsTags = parsed.some(g => !Array.isArray(g.tags) || g.tags.length === 0);
+                    const finalTop = needsTags ? await enrichWithTags(parsed) : parsed;
 
-        setTopGames(finalTop);
-        setCustomSelection(finalTop);
-        if (needsTags) localStorage.setItem('topThree', JSON.stringify(finalTop));
-      } else {
-        setTopGames([]);
-      }
-    } catch (err) {
-      console.error('❌ Failed to parse/enrich topThree:', err);
-      setTopGames([]);
-    }
-  })();
-}, []);
+                    setTopGames(finalTop);
+                    setCustomSelection(finalTop);
+                    if (needsTags) localStorage.setItem('topThree', JSON.stringify(finalTop));
+                } else {
+                    setTopGames([]);
+                }
+            } catch (err) {
+                console.error('❌ Failed to parse/enrich topThree:', err);
+                setTopGames([]);
+            }
+        })();
+    }, []);
 
     // 2) Load user → games → resume
     useEffect(() => {
@@ -107,60 +119,60 @@ useEffect(() => {
         load();
     }, [navigate]);
 
-  async function fetchGames(steamId) {
-  try {
-    const res = await fetch(`${API}/api/games/user/${steamId}`, { credentials: 'include' });
-    if (!res.ok) throw new Error(`GET /api/games/user/${steamId} -> ${res.status}`);
-    const data = await res.json();
+    async function fetchGames(steamId) {
+        try {
+            const res = await fetch(`${API}/api/games/user/${steamId}`, { credentials: 'include' });
+            if (!res.ok) throw new Error(`GET /api/games/user/${steamId} -> ${res.status}`);
+            const data = await res.json();
 
-    setGames(data.allGames || []);
+            setGames(data.allGames || []);
 
-    if (Array.isArray(data.topThree) && data.topThree.length) {
-      const needsTags = data.topThree.some(g => !Array.isArray(g.tags) || g.tags.length === 0);
-      const finalTop = needsTags ? await enrichWithTags(data.topThree) : data.topThree;
+            if (Array.isArray(data.topThree) && data.topThree.length) {
+                const needsTags = data.topThree.some(g => !Array.isArray(g.tags) || g.tags.length === 0);
+                const finalTop = needsTags ? await enrichWithTags(data.topThree) : data.topThree;
 
-      setTopGames(finalTop);
-      setCustomSelection(finalTop);
-      localStorage.setItem('topThree', JSON.stringify(finalTop));
-    } else {
-      localStorage.removeItem('topThree');
-      setTopGames([]);
-      setCustomSelection([]);
+                setTopGames(finalTop);
+                setCustomSelection(finalTop);
+                localStorage.setItem('topThree', JSON.stringify(finalTop));
+            } else {
+                localStorage.removeItem('topThree');
+                setTopGames([]);
+                setCustomSelection([]);
+            }
+            setLoading(false);
+        } catch (err) {
+            console.error('Failed to fetch games:', err);
+            setLoading(false);
+        }
     }
-    setLoading(false);
-  } catch (err) {
-    console.error('Failed to fetch games:', err);
-    setLoading(false);
-  }
-}
 
-  const fetchRecommendations = async () => {
-  if (!topGames.length) {
-    setRecommendations('Pick at least 1 game to get recommendations.');
-    return;
-  }
-  setLoading(true);
-  try {
-    const ensured = await enrichWithTags(topGames);
-    if (ensured !== topGames) {
-      setTopGames(ensured);
-      localStorage.setItem('topThree', JSON.stringify(ensured));
-    }
-    const res = await fetch(`${API}/api/recommend`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ gamesWithTags: ensured }),
-    });
-    if (!res.ok) throw new Error(`POST /api/recommend -> ${res.status}`);
-    const data = await res.json();
-    setRecommendations(data.recommendations);
-  } catch (err) {
-    setRecommendations('Failed to fetch recommendations.');
-    console.error('❌ Error fetching recommendations:', err);
-  }
-  setLoading(false);
-};
+    const fetchRecommendations = async () => {
+        if (!topGames.length) {
+            setRecommendations('Pick at least 1 game to get recommendations.');
+            return;
+        }
+        setLoading(true);
+        try {
+            const ensured = await enrichWithTags(topGames);
+            if (ensured !== topGames) {
+                setTopGames(ensured);
+                localStorage.setItem('topThree', JSON.stringify(ensured));
+            }
+            const res = await fetch(`${API}/api/recommend`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ gamesWithTags: ensured }),
+            });
+            if (!res.ok) throw new Error(`POST /api/recommend -> ${res.status}`);
+            const data = await res.json();
+            setRecommendations(data.recommendations);
+        } catch (err) {
+            setRecommendations('Failed to fetch recommendations.');
+            console.error('❌ Error fetching recommendations:', err);
+        }
+        setLoading(false);
+    };
 
     // Animation loop (pause-aware)
     useEffect(() => {
@@ -175,33 +187,31 @@ useEffect(() => {
     if (!API) return <p>Configuration error: API URL missing.</p>;
     if (!user) return <p>You are not logged in with Steam.</p>;
 
-    // ... (UI unchanged below; you can keep your carousel & picker as-is)
-    // For brevity, keep your existing render JSX.
+
     return (
         <div className="gameai-wrapper">
             <div className="profile-container">
                 <div className="gameai-content">
+                    {/* Top-left profile */}
                     <div className="profile-header">
                         {avatar ? (
                             <img
                                 className="avatar"
                                 src={avatar}
                                 alt={`${user.displayName} avatar`}
-                                onError={(e) => {
-                                    // fallback if the URL is dead
-                                    e.currentTarget.src = '/fallback-avatar.png';
-                                }}
+                                onError={(e) => { e.currentTarget.src = '/fallback-avatar.png'; }}
                             />
                         ) : (
-                            // optional: simple placeholder if no avatar at all
                             <div className="avatar" style={{ background: '#033', display: 'inline-block' }} />
                         )}
                         <h1 className="username">{user.displayName}</h1>
                     </div>
 
+                    {/* Title */}
                     <p className="steam-games-title">Games You've Played:</p>
 
-                    <div className="carousel-container">
+                    {/* Carousel */}
+                    <div className={`carousel-container ${paused ? 'is-paused' : ''}`}>
                         {paused && <div className="pause-overlay"></div>}
                         <div className="carousel-wrapper">
                             <div className="carousel-inner">
@@ -219,58 +229,22 @@ useEffect(() => {
                                             className={`game-card ${isVisible ? 'visible' : ''}`}
                                             style={{
                                                 transform: `
-            rotateY(${angleWithRotation}deg)
-            translateZ(500px)
-            translateY(${yOffset}px)
-        `
+                        rotateY(${angleWithRotation}deg)
+                        translateZ(500px)
+                        translateY(${yOffset}px)
+                      `,
                                             }}
-                                            onClick={() => {
-                                                setPaused(true);
-                                                setPendingRatingAppId(game.appid);
-                                            }}
+                                            onClick={() => openRatingModal(game)}
                                         >
                                             <img
                                                 className="game-image"
                                                 src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
                                                 alt={game.name}
-                                                onError={(e) => (e.target.style.display = 'none')}
+                                                onError={(e) => (e.currentTarget.style.display = 'none')}
                                             />
                                             <div className="game-info">
                                                 <p>{game.name}</p>
                                                 <p>{Math.round(game.playtime_forever / 60)} hrs</p>
-
-                                                {/* Star rating UI (always shown, but only clickable if selected) */}
-                                                <div className="rating-stars">
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <span
-                                                            key={star}
-                                                            className={`star ${ratings[game.appid] >= star ? 'filled' : ''} ${pendingRatingAppId === game.appid ? 'clickable' : 'disabled'}`}
-                                                            onClick={(e) => {
-                                                                if (pendingRatingAppId === game.appid) {
-                                                                    e.stopPropagation();
-                                                                    setRating(game.appid, star); // ✅ Only rate here — don't unpause
-                                                                }
-                                                            }}
-
-                                                        >
-                                                            ★
-                                                        </span>
-                                                    ))}
-                                                </div>
-
-                                                {/* Show Skip button only when game is selected */}
-                                                {pendingRatingAppId === game.appid && (
-                                                    <button
-                                                        className="submit-rating-btn"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setPaused(false);
-                                                            setPendingRatingAppId(null);
-                                                        }}
-                                                    >
-                                                        Submit
-                                                    </button>
-                                                )}
                                             </div>
                                         </div>
                                     );
@@ -279,11 +253,11 @@ useEffect(() => {
                         </div>
                     </div>
 
+                    {/* Recommender */}
                     <div className="chatbot-container">
                         <h1>GameGeniusAI Recommender</h1>
 
-
-                        <p className="chatbot-subtext"> Chosen Games ({topGames.length}/3)</p>
+                        <p className="chatbot-subtext">Chosen Games ({topGames.length}/3)</p>
                         <div className="top-games inside">
                             {topGames.map((game) => (
                                 <div className="top-game-large" key={game.appid}>
@@ -291,7 +265,7 @@ useEffect(() => {
                                         className="top-game-image"
                                         src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
                                         alt={game.name}
-                                        onError={(e) => (e.target.style.display = 'none')}
+                                        onError={(e) => (e.currentTarget.style.display = 'none')}
                                     />
                                     <div className="top-game-info">
                                         <p>{game.name}</p>
@@ -303,11 +277,14 @@ useEffect(() => {
                         <button
                             className="customize-button"
                             onClick={() => {
+                                // optional: start fresh selection
+                                // setCustomSelection([]);
                                 setShowGamePicker(true);
                             }}
                         >
                             Customize Games
                         </button>
+
                         <div className="cube-button-container" onClick={fetchRecommendations}>
                             <div className="cube-label">{loading ? 'Thinking...' : 'Get Recommendations'}</div>
                             <div className={`globe-container ${loading ? 'loading' : ''}`}>
@@ -321,6 +298,7 @@ useEffect(() => {
                                 </div>
                             </div>
                         </div>
+
                         {recommendations && (
                             <div className="recommendation-output">
                                 <p className="recommendation-header">
@@ -331,26 +309,22 @@ useEffect(() => {
                         )}
                     </div>
 
+                    {/* Game Picker Modal */}
                     {showGamePicker && (
                         <div className="game-picker-modal">
                             <h2>Select up to 3 Games ({customSelection.length}/3)</h2>
                             <div className="game-picker-list">
-                                {games.map(game => (
+                                {games.map((game) => (
                                     <div
                                         key={game.appid}
-                                        className={`game-picker-item ${customSelection.find(g => g.appid === game.appid) ? 'selected' : ''
+                                        className={`game-picker-item ${customSelection.find((g) => g.appid === game.appid) ? 'selected' : ''
                                             }`}
                                         onClick={() => {
-                                            setCustomSelection(prev => {
-                                                // already selected? toggle off
-                                                if (prev.some(g => g.appid === game.appid)) {
-                                                    return prev.filter(g => g.appid !== game.appid);
+                                            setCustomSelection((prev) => {
+                                                if (prev.some((g) => g.appid === game.appid)) {
+                                                    return prev.filter((g) => g.appid !== game.appid);
                                                 }
-                                                // room left? add it
-                                                if (prev.length < 3) {
-                                                    return [...prev, game];
-                                                }
-                                                // at 3 already? replace the oldest (no manual deselect needed)
+                                                if (prev.length < 3) return [...prev, game];
                                                 return [...prev.slice(1), game];
                                             });
                                         }}
@@ -376,19 +350,65 @@ useEffect(() => {
                                                 return { ...game, tags: data.tags || [] };
                                             })
                                         );
-
                                         setTopGames(enriched);
                                         localStorage.setItem('topThree', JSON.stringify(enriched));
                                         setShowGamePicker(false);
                                     } catch (err) {
-                                        console.error("❌ Failed to fetch tags or save selection:", err);
-                                        alert("Failed to save selection. Check console for errors.");
+                                        console.error('❌ Failed to fetch tags or save selection:', err);
+                                        alert('Failed to save selection. Check console for errors.');
                                     }
                                 }}
                             >
                                 Save Selection
                             </button>
+                        </div>
+                    )}
 
+                    {/* Rating Modal */}
+                    {ratingModal.open && ratingModal.game && (
+                        <div className="rating-modal-backdrop" onClick={closeRatingModal} role="dialog" aria-modal="true">
+                            <div className="rating-modal" onClick={(e) => e.stopPropagation()}>
+                                <button className="modal-close" aria-label="Close" onClick={closeRatingModal}>
+                                    ×
+                                </button>
+
+                                <div className="rating-modal-header">
+                                    <img
+                                        src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${ratingModal.game.appid}/header.jpg`}
+                                        alt={ratingModal.game.name}
+                                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                                    />
+                                    <h3>{ratingModal.game.name}</h3>
+                                </div>
+
+                                <div className="rating-modal-stars">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <span
+                                            key={star}
+                                            className={`star ${ratingModal.temp >= star ? 'filled' : ''} clickable`}
+                                            onClick={() => setRatingModal((m) => ({ ...m, temp: star }))}
+                                        >
+                                            ★
+                                        </span>
+                                    ))}
+                                </div>
+
+                                <div className="rating-modal-actions">
+                                    <button
+                                        className="submit-rating-btn"
+                                        onClick={() => {
+                                            setRating(ratingModal.game.appid, ratingModal.temp);
+                                            closeRatingModal();
+                                        }}
+                                        disabled={ratingModal.temp === 0}
+                                    >
+                                        Submit
+                                    </button>
+                                    <button className="cancel-rating-btn" onClick={closeRatingModal}>
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

@@ -393,3 +393,108 @@ html, body {
     0 0 10px #ffffff,
     0 0 20px #ffffff !important;
 }
+/* Disable scroll when modal open */
+.no-scroll { overflow: hidden; }
+
+/* Backdrop */
+.rating-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000; /* above everything */
+  backdrop-filter: blur(2px);
+}
+
+/* Modal panel */
+.rating-modal {
+  width: min(92vw, 520px);
+  background: rgba(0,0,0,.9);
+  border: 1px solid rgba(0,255,0,.3);
+  border-radius: 14px;
+  box-shadow: 0 0 24px rgba(0,255,0,.25);
+  padding: 1rem 1.25rem 1.25rem;
+  color: #00ff00;
+  position: relative;
+}
+
+/* Close (X) */
+.modal-close {
+  position: absolute;
+  top: 6px; right: 10px;
+  font-size: 1.5rem;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  color: #9cff9c;
+  cursor: pointer;
+}
+.modal-close:hover { color: #fff; }
+
+/* Header: image + title */
+.rating-modal-header {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.rating-modal-header img {
+  width: 120px; height: 70px; object-fit: cover; border-radius: 8px;
+  box-shadow: 0 0 8px #00ff00;
+}
+.rating-modal-header h3 {
+  margin: 0; font-size: 1.05rem; line-height: 1.2;
+}
+
+/* Stars */
+.rating-modal-stars {
+  text-align: center;
+  font-size: 1.6rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.rating-modal-stars .star {
+  padding: 0 4px;
+  color: #003300;
+  cursor: pointer;
+  transition: transform .1s ease, text-shadow .15s ease, color .15s ease;
+}
+.rating-modal-stars .star.filled {
+  color: #00ff00;
+  text-shadow: 0 0 8px #00ff00, 0 0 16px #00ff00;
+}
+.rating-modal-stars .star:hover { transform: scale(1.1); }
+
+/* Actions */
+.rating-modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+.submit-rating-btn {
+  min-width: 110px;
+  padding: 0.5rem 0.9rem;
+  border: none;
+  background: #00ff00;
+  color: #000;
+  font-weight: 800;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.submit-rating-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.cancel-rating-btn {
+  min-width: 110px;
+  padding: 0.5rem 0.9rem;
+  border: 2px solid #00ff00;
+  color: #00ff00;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cancel-rating-btn:hover {
+  background: #00ff00;
+  color: #000;
+}
