@@ -45,6 +45,17 @@ function GameAI() {
         user?.avatarfull ??
         '';
     const [ratingModal, setRatingModal] = useState({ open: false, game: null, temp: 0 });
+    const dragRef = useRef({
+  dragging: false,
+  lastX: 0,
+  velocity: 0,
+  inertiaId: 0,
+});
+
+const DRAG_SENSITIVITY = 0.25; // bigger = more rotation per pixel
+const FRICTION = 0.95;         // inertia slowdown per frame
+const STOP_THRESHOLD = 0.05;   // when |velocity| drops below this, stop inertia
+
 
     function openRatingModal(game) {
         setPaused(true);
@@ -63,7 +74,58 @@ function GameAI() {
         setRatings(updated);
         localStorage.setItem('gameRatings', JSON.stringify(updated));
     };
+function stopInertia() {
+  if (dragRef.current.inertiaId) {
+    cancelAnimationFrame(dragRef.current.inertiaId);
+    dragRef.current.inertiaId = 0;
+  }
+}
 
+function startInertia() {
+  stopInertia();
+  const step = () => {
+    const v = dragRef.current.velocity *= FRICTION;
+    if (Math.abs(v) < STOP_THRESHOLD) {
+      dragRef.current.velocity = 0;
+      dragRef.current.inertiaId = 0;
+      return;
+    }
+    setRotation(r => r + v * DRAG_SENSITIVITY);
+    dragRef.current.inertiaId = requestAnimationFrame(step);
+  };
+  dragRef.current.inertiaId = requestAnimationFrame(step);
+}
+
+function onPointerDown(e) {
+  // unify touch/mouse coordinates
+  const x = e.touches ? e.touches[0].clientX : e.clientX;
+  dragRef.current.dragging = true;
+  dragRef.current.lastX = x;
+  dragRef.current.velocity = 0;
+  stopInertia();
+  setPaused(true); // optional: stop auto-spin while dragging
+}
+
+function onPointerMove(e) {
+  if (!dragRef.current.dragging) return;
+  const x = e.touches ? e.touches[0].clientX : e.clientX;
+
+  const dx = x - dragRef.current.lastX;
+  dragRef.current.lastX = x;
+  dragRef.current.velocity = dx; // pixels per frame (we’ll scale below)
+
+  setRotation(r => r + dx * DRAG_SENSITIVITY);
+
+  // prevent the browser from treating this as a horizontal page swipe
+  if (e.cancelable) e.preventDefault();
+}
+
+function onPointerUpOrCancel() {
+  if (!dragRef.current.dragging) return;
+  dragRef.current.dragging = false;
+  startInertia();   // keep spinning a bit
+  setPaused(false); // optional: resume your auto-spin loop
+}
     // 1) Load cached topThree on mount (and enrich with tags if missing)
     useEffect(() => {
         (async () => {
@@ -211,7 +273,16 @@ function GameAI() {
                     <p className="steam-games-title">Games You've Played:</p>
 
                     {/* Carousel */}
-                    <div className={`carousel-container ${paused ? 'is-paused' : ''}`}>
+                    <div className={`carousel-container ${paused ? 'is-paused' : ''}`}
+                    onPointerDown={onPointerDown}
+  onPointerMove={onPointerMove}
+  onPointerUp={onPointerUpOrCancel}
+  onPointerCancel={onPointerUpOrCancel}
+  onTouchStart={onPointerDown}
+  onTouchMove={onPointerMove}
+  onTouchEnd={onPointerUpOrCancel}
+  onTouchCancel={onPointerUpOrCancel}
+  >
                         {paused && <div className="pause-overlay"></div>}
                         <div className="carousel-wrapper">
                             <div className="carousel-inner">
@@ -285,8 +356,7 @@ function GameAI() {
                         <button
                             className="customize-button"
                             onClick={() => {
-                                // optional: start fresh selection
-                                // setCustomSelection([]);
+                                setCustomSelection([]);
                                 setShowGamePicker(true);
                             }}
                         >
