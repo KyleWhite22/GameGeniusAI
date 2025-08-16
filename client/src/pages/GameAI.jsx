@@ -46,86 +46,145 @@ function GameAI() {
         '';
     const [ratingModal, setRatingModal] = useState({ open: false, game: null, temp: 0 });
     const dragRef = useRef({
-  dragging: false,
-  lastX: 0,
-  velocity: 0,
-  inertiaId: 0,
-});
+        dragging: false,
+        lastX: 0,
+        velocity: 0,
+        inertiaId: 0,
+    });
+    const containerRef = useRef(null);
 
-const DRAG_SENSITIVITY = 0.25; // bigger = more rotation per pixel
-const FRICTION = 0.95;         // inertia slowdown per frame
-const STOP_THRESHOLD = 0.05;   // when |velocity| drops below this, stop inertia
+    const drag = useRef({
+        dragging: false,
+        lastX: 0,
+        lastT: 0,
+        velocity: 0,
+        rafId: 0,
+        pendingDx: 0,
+    });
 
+    const SENS = 0.25;   // rotation per pixel
+    const FRICTION = 0.95;
+    const STOP_V = 0.04;
 
-    function openRatingModal(game) {
+    function applyDelta() {
+        const d = drag.current.pendingDx;
+        drag.current.pendingDx = 0;
+        if (d !== 0) setRotation(r => r + d * SENS);
+        drag.current.rafId = 0;
+    }
+
+    function queueDelta(dx) {
+        drag.current.pendingDx += dx;
+        if (!drag.current.rafId) {
+            drag.current.rafId = requestAnimationFrame(applyDelta);
+        }
+    }
+
+    function stopInertia() {
+        if (drag.current.rafId) {
+            cancelAnimationFrame(drag.current.rafId);
+            drag.current.rafId = 0;
+        }
+    }
+
+    function startInertia() {
+        stopInertia();
+        const step = () => {
+            drag.current.velocity *= FRICTION;
+            if (Math.abs(drag.current.velocity) < STOP_V) {
+                drag.current.velocity = 0;
+                return;
+            }
+            queueDelta(drag.current.velocity);
+            drag.current.rafId = requestAnimationFrame(step);
+        };
+        drag.current.rafId = requestAnimationFrame(step);
+    }
+
+    function handleDown(x) {
+        drag.current.dragging = true;
+        drag.current.lastX = x;
+        drag.current.lastT = performance.now();
+        drag.current.velocity = 0;
+        stopInertia();
         setPaused(true);
-        setRatingModal({ open: true, game, temp: ratings[game.appid] || 0 });
-        document.body.classList.add('no-scroll');
     }
 
-    function closeRatingModal() {
+    function handleMove(x, e) {
+        if (!drag.current.dragging) return;
+        const now = performance.now();
+        const dx = x - drag.current.lastX;
+        const dt = Math.max(1, now - drag.current.lastT);
+
+        const instantV = (dx / dt) * 16; // px per ~frame
+        drag.current.velocity = drag.current.velocity * 0.8 + instantV * 0.2;
+
+        drag.current.lastX = x;
+        drag.current.lastT = now;
+
+        queueDelta(dx);
+        if (e && e.cancelable) e.preventDefault();
+    }
+
+    function handleUp() {
+        if (!drag.current.dragging) return;
+        drag.current.dragging = false;
+        startInertia();
         setPaused(false);
-        setRatingModal({ open: false, game: null, temp: 0 });
-        document.body.classList.remove('no-scroll');
     }
-    const avatar = rawAvatar ? rawAvatar.replace(/^http:\/\//, 'https://') : '';
-    const setRating = (appid, value) => {
-        const updated = { ...ratings, [appid]: value };
-        setRatings(updated);
-        localStorage.setItem('gameRatings', JSON.stringify(updated));
-    };
-function stopInertia() {
-  if (dragRef.current.inertiaId) {
-    cancelAnimationFrame(dragRef.current.inertiaId);
-    dragRef.current.inertiaId = 0;
-  }
-}
 
-function startInertia() {
-  stopInertia();
-  const step = () => {
-    const v = dragRef.current.velocity *= FRICTION;
-    if (Math.abs(v) < STOP_THRESHOLD) {
-      dragRef.current.velocity = 0;
-      dragRef.current.inertiaId = 0;
-      return;
-    }
-    setRotation(r => r + v * DRAG_SENSITIVITY);
-    dragRef.current.inertiaId = requestAnimationFrame(step);
-  };
-  dragRef.current.inertiaId = requestAnimationFrame(step);
-}
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
 
-function onPointerDown(e) {
-  // unify touch/mouse coordinates
-  const x = e.touches ? e.touches[0].clientX : e.clientX;
-  dragRef.current.dragging = true;
-  dragRef.current.lastX = x;
-  dragRef.current.velocity = 0;
-  stopInertia();
-  setPaused(true); // optional: stop auto-spin while dragging
-}
+        // Pointer Events
+        const onPointerDown = (e) => {
+            el.setPointerCapture?.(e.pointerId);
+            handleDown(e.clientX);
+        };
+        const onPointerMove = (e) => handleMove(e.clientX, e);
+        const onPointerUp = () => handleUp();
 
-function onPointerMove(e) {
-  if (!dragRef.current.dragging) return;
-  const x = e.touches ? e.touches[0].clientX : e.clientX;
+        el.addEventListener('pointerdown', onPointerDown);
+        el.addEventListener('pointermove', onPointerMove);
+        el.addEventListener('pointerup', onPointerUp);
+        el.addEventListener('pointercancel', onPointerUp);
 
-  const dx = x - dragRef.current.lastX;
-  dragRef.current.lastX = x;
-  dragRef.current.velocity = dx; // pixels per frame (we’ll scale below)
+        // iOS: explicit touch listeners with passive:false
+        const onTouchStart = (e) => handleDown(e.touches[0].clientX);
+        const onTouchMove = (e) => handleMove(e.touches[0].clientX, e);
+        const onTouchEnd = () => handleUp();
 
-  setRotation(r => r + dx * DRAG_SENSITIVITY);
+        el.addEventListener('touchstart', onTouchStart, { passive: false });
+        el.addEventListener('touchmove', onTouchMove, { passive: false });
+        el.addEventListener('touchend', onTouchEnd, { passive: false });
+        el.addEventListener('touchcancel', onTouchEnd, { passive: false });
 
-  // prevent the browser from treating this as a horizontal page swipe
-  if (e.cancelable) e.preventDefault();
-}
+        // Mouse fallback
+        const onMouseDown = (e) => handleDown(e.clientX);
+        const onMouseMove = (e) => handleMove(e.clientX, e);
+        const onMouseUp = () => handleUp();
 
-function onPointerUpOrCancel() {
-  if (!dragRef.current.dragging) return;
-  dragRef.current.dragging = false;
-  startInertia();   // keep spinning a bit
-  setPaused(false); // optional: resume your auto-spin loop
-}
+        el.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+
+        return () => {
+            el.removeEventListener('pointerdown', onPointerDown);
+            el.removeEventListener('pointermove', onPointerMove);
+            el.removeEventListener('pointerup', onPointerUp);
+            el.removeEventListener('pointercancel', onPointerUp);
+
+            el.removeEventListener('touchstart', onTouchStart);
+            el.removeEventListener('touchmove', onTouchMove);
+            el.removeEventListener('touchend', onTouchEnd);
+            el.removeEventListener('touchcancel', onTouchEnd);
+
+            el.removeEventListener('mousedown', onMouseDown);
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+    }, []);
     // 1) Load cached topThree on mount (and enrich with tags if missing)
     useEffect(() => {
         (async () => {
@@ -273,16 +332,9 @@ function onPointerUpOrCancel() {
                     <p className="steam-games-title">Games You've Played:</p>
 
                     {/* Carousel */}
-                    <div className={`carousel-container ${paused ? 'is-paused' : ''}`}
-                    onPointerDown={onPointerDown}
-  onPointerMove={onPointerMove}
-  onPointerUp={onPointerUpOrCancel}
-  onPointerCancel={onPointerUpOrCancel}
-  onTouchStart={onPointerDown}
-  onTouchMove={onPointerMove}
-  onTouchEnd={onPointerUpOrCancel}
-  onTouchCancel={onPointerUpOrCancel}
-  >
+                    <div ref={containerRef}
+                        className={`carousel-container ${paused ? 'is-paused' : ''}`}
+                    >
                         {paused && <div className="pause-overlay"></div>}
                         <div className="carousel-wrapper">
                             <div className="carousel-inner">
@@ -313,16 +365,16 @@ function onPointerUpOrCancel() {
                                                 alt={game.name}
                                                 onError={(e) => (e.currentTarget.style.display = 'none')}
                                             />
-                                            
+
                                             <div className="game-info">
                                                 <p>{game.name}</p>
                                                 {(
-  <div className="rated-stars-badge" aria-label={`Rated ${ratings[game.appid]} out of 5`}>
-    {[1,2,3,4,5].map((s) => (
-      <span key={s} className={`star ${ratings[game.appid] >= s ? 'filled' : ''}`}>★</span>
-    ))}
-  </div>
-)}
+                                                    <div className="rated-stars-badge" aria-label={`Rated ${ratings[game.appid]} out of 5`}>
+                                                        {[1, 2, 3, 4, 5].map((s) => (
+                                                            <span key={s} className={`star ${ratings[game.appid] >= s ? 'filled' : ''}`}>★</span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 <p>{Math.round(game.playtime_forever / 60)} hrs</p>
                                             </div>
                                         </div>

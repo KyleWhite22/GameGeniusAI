@@ -498,7 +498,7 @@ html, body {
   background: #00ff00;
   color: #000;
 }
-/* Let the page scroll vertically while we handle horizontal swipes */
 .carousel-container {
-  touch-action: pan-y; /* iOS Safari friendly */
+  touch-action: pan-y;           /* allow vertical page scroll, we handle horizontal */
+  overscroll-behavior: contain;  /* reduce rubber-banding/pull-to-refresh interference */
 }
