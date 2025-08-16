@@ -41,7 +41,7 @@ function Home() {
 
             <div className="hero-actions">
               <Link to="/work" className="btn primary">View Work</Link>
-              <Link to="/personal" className="btn ghost">About Me</Link>
+              <Link to="/GameAILogin" className="btn ghost">My recent project!</Link>
             </div>
           </div>
         </div>
