@@ -28,23 +28,23 @@ html, body {
 
 /* ===== Content container ===== */
 .gameai-content {
-  padding-top: 4.5rem; 
+  padding-top: 4.5rem;            /* leave room for fixed profile header */
   width: 100%;
   max-width: 1100px;              /* keeps layout from exploding on big screens */
   display: grid;
   grid-template-rows: auto auto auto 1fr;
-  row-gap: 0.5rem !important; /* less grid spacing overall */
+  row-gap: 0.35rem;                /* tighter overall spacing */
   background: transparent;
-  
 }
 
+/* ===== Top-left profile HUD ===== */
 .profile-header {
   position: fixed !important;
   top: 0.75rem !important;
   left: 0.75rem !important;
   display: flex !important;
   flex-direction: row !important;
-  align-items: center !important; /* keeps them perfectly level */
+  align-items: center !important; /* level with avatar */
   gap: 0.4rem !important;
   z-index: 100 !important;
   background: rgba(0, 0, 0, 0.35) !important;
@@ -64,7 +64,7 @@ html, body {
   object-fit: cover !important;
   border: none !important;
   background: none !important;
-  box-shadow: none !important;
+  box-shadow: none !important; /* no neon */
   outline: none !important;
 }
 
@@ -73,7 +73,7 @@ html, body {
   font-size: 0.95rem !important;
   margin: 0 !important;
   position: relative !important;
-  top: -15px !important; /* adjust this until it looks perfect */
+  top: -15px !important;           /* nudge up to sit level with avatar */
   display: inline-block !important;
   vertical-align: middle !important;
   text-shadow: none !important;
@@ -87,24 +87,26 @@ html, body {
   text-align: center;
   margin: 0.25rem 0;
   text-shadow: 0 0 4px var(--neon);
+}
+
+.steam-games-title {
   margin-top: 0 !important;
-  margin-bottom: 0.6rem !important; /* minimal space under the title */
+  margin-bottom: 1rem !important;  /* tunable gap above carousel */
 }
 
 /* ===== Carousel (3D ring of games) ===== */
 .carousel-container {
   position: relative;
   width: 100%;
-  height: clamp(240px, 40vh, 420px); /* consistent, not too tall */
+  height: clamp(170px, 24vh, 260px) !important; /* shorter & consistent */
   display: flex;
-  justify-content: center;
-  align-items: center;
-  perspective: 1000px;
- margin-top: 0.25rem !important;
-  margin-bottom: 1rem !important;
-  height: clamp(200px, 30vh, 320px) !important;
-  align-items: flex-start !important;   /* <- key: align to TOP, not center */
   justify-content: center !important;
+  align-items: flex-start !important;           /* align ring to TOP */
+  perspective: 1000px;
+  margin-top: 0.25rem !important;               /* subtle space from title */
+  margin-bottom: 0 !important;             /* <<< tighter gap below */
+  overflow: visible;
+  height: 200px !important; 
 }
 
 .carousel-wrapper {
@@ -114,9 +116,20 @@ html, body {
 }
 
 .carousel-inner {
-  position: relative !important;
+  position: relative;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  top: -18px !important;                         /* pull ring up slightly */
   margin-top: 0 !important;
   padding-top: 0 !important;
+}
+.carousel-container + .chatbot-container {
+  margin-top: 0 !important;          /* no extra gap from the section */
+}
+.carousel-container + .chatbot-container h1 {
+  margin-top: 0 !important;          /* H1s have big default top margins */
+  margin-bottom: 0.35rem !important; /* small breathing room below the title */
 }
 
 .game-card {
@@ -188,13 +201,12 @@ html, body {
 .chatbot-container {
   width: 100%;
   max-width: 1100px;
-  margin: 2rem auto 0;  /* smaller gap */
+  margin-top: 0.15rem !important;  /* tiny breathing room */
+  margin-bottom: 0.35rem !important;
   text-align: center;
 }
 
-.chatbot-subtext {
-  font-weight: 700;
-}
+.chatbot-subtext { font-weight: 700; }
 
 /* Selected top games row */
 .top-games.inside {
@@ -279,7 +291,7 @@ html, body {
 
 /* ===== Recommendations output ===== */
 .recommendation-output {
-  margin: 1.5rem auto 0;
+  margin: 1.2rem auto 0;
   padding: 1rem 1.25rem;
   border-radius: 12px;
   max-width: 900px;
@@ -372,4 +384,12 @@ html, body {
   .top-game-image { height: 80px; }
   .cube-button-container,
   .globe-container { width: 100px; height: 100px; }
+}
+.globe-container.loading .latitude,
+.globe-container.loading .longitude {
+  border-color: #ffffff !important;
+  box-shadow:
+    0 0 5px #ffffff,
+    0 0 10px #ffffff,
+    0 0 20px #ffffff !important;
 }
