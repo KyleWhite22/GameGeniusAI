@@ -242,8 +242,16 @@ function GameAI() {
                                                 alt={game.name}
                                                 onError={(e) => (e.currentTarget.style.display = 'none')}
                                             />
+                                            
                                             <div className="game-info">
                                                 <p>{game.name}</p>
+                                                {(
+  <div className="rated-stars-badge" aria-label={`Rated ${ratings[game.appid]} out of 5`}>
+    {[1,2,3,4,5].map((s) => (
+      <span key={s} className={`star ${ratings[game.appid] >= s ? 'filled' : ''}`}>★</span>
+    ))}
+  </div>
+)}
                                                 <p>{Math.round(game.playtime_forever / 60)} hrs</p>
                                             </div>
                                         </div>
