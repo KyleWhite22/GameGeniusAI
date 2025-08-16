@@ -12,7 +12,6 @@ function Home() {
           <img src={kyleLogo} alt="Kyle Logo" className="nav-logo" />
         </div>
         <nav className="nav-links">
-          <Link to="/personal" className="nav-link">Personal</Link>
           <Link to="/education" className="nav-link">Education</Link>
           <Link to="/work" className="nav-link">Work</Link>
           <Link to="/GameAILogin" className="nav-link">GameGeniusAI</Link>
