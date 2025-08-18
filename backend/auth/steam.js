@@ -35,15 +35,10 @@ router.get(
   '/steam/return',
   passport.authenticate('steam', { failureRedirect: `${process.env.CLIENT_URL}/login?err=steam_callback` }),
   (req, res, next) => {
-    // Passport should have set req.user here
-    console.log('✅ [steam] isAuthenticated:', req.isAuthenticated(), 'sid:', req.sessionID);
-
-    // Force the session to persist the new passport data before redirecting
+    console.log('✅ isAuth after Steam:', req.isAuthenticated(), 'sid:', req.sessionID);
     req.session.save((err) => {
       if (err) return next(err);
-      const target = `${process.env.CLIENT_URL}/gameAI`;
-      console.log('➡️ Redirecting to:', target);
-      res.redirect(target);
+      res.redirect(`${process.env.CLIENT_URL}/gameAI`);
     });
   }
 );
