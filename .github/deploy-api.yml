@@ -1,0 +1,50 @@
+name: Deploy API
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'gameAI/backend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user          
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            # where the repo lives on the EC2 box
+            mkdir -p /srv/gameai-api
+            cd /srv/gameai-api
+
+            # first-time clone; otherwise pull latest
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/KyleWhite22/GameGeniusAI.git .
+            fi
+            git fetch --all
+            git reset --hard origin/main
+
+            cd gameAI/backend
+
+            # (optional) load nvm if you installed node via nvm
+            [ -f "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+
+            npm ci
+
+            # pick entry file (dist if you build, else server.js)
+            APP=server.js
+            [ -f dist/server.js ] && APP=dist/server.js
+
+            # reload or start your PM2 app named "gamegenius"
+            pm2 describe gamegenius >/dev/null 2>&1 \
+              && pm2 reload gamegenius --update-env \
+              || pm2 start "$APP" --name gamegenius
+
+            pm2 save
