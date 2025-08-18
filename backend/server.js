@@ -1,5 +1,4 @@
 require('dotenv').config();
-console.log('CLIENT_URL:', process.env.CLIENT_URL);
 
 const express = require('express');
 const session = require('express-session');
@@ -13,10 +12,18 @@ const gamesRoute = require('./routes/games');
 const steamTagsRoute = require('./routes/steamTags');
 const recommendRoute = require('./routes/recommend');
 
-// ✅ DEFINE APP FIRST
 const app = express();
 
-// ✅ Connect to MongoDB
+const isProd = process.env.NODE_ENV === 'production';
+const CLIENT_URL = process.env.CLIENT_URL || (isProd
+  ? 'https://game.kyle-white.com'
+  : 'http://localhost:5173'
+);
+const API_ORIGIN = isProd ? 'https://api.kyle-white.com' : 'http://localhost:5000';
+
+console.log('ENV:', { NODE_ENV: process.env.NODE_ENV, CLIENT_URL, API_ORIGIN });
+
+// --- Mongo
 mongoose.connect(process.env.MONGO_URI, {
   serverApi: { version: '1' },
   tls: true,
@@ -25,44 +32,44 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('✅ Connected to MongoDB'))
 .catch((err) => console.error('❌ MongoDB error:', err));
 
-const isProd = process.env.NODE_ENV === 'production';
-
-// Allowed origins for CORS
+// --- CORS (allow frontend origin)
 const PROD_ORIGINS = [
-  'https://kyle-white.com',
-  'https://www.kyle-white.com'
+  'https://kyle-white.com',        // if you ever load from apex
+  'https://www.kyle-white.com',    // if you ever load from www
+  'https://game.kyle-white.com',   // <- main frontend
 ];
-const DEV_ORIGINS = [
-  'http://localhost:5173'
-];
+const DEV_ORIGINS = ['http://localhost:5173'];
 
-// CORS
+const ALLOWLIST = isProd ? PROD_ORIGINS : DEV_ORIGINS;
+
 app.use(cors({
   origin: (origin, cb) => {
-    // allow non-browser tools without Origin header
-    if (!origin) return cb(null, true);
-
-    const allowed = isProd ? PROD_ORIGINS : DEV_ORIGINS;
-    if (allowed.includes(origin)) return cb(null, true);
-
+    if (!origin) return cb(null, true);        // curl/postman
+    if (ALLOWLIST.includes(origin)) return cb(null, true);
     return cb(new Error(`CORS: origin not allowed: ${origin}`));
   },
   credentials: true,
 }));
 
-// Trust proxy (needed in prod behind Nginx so secure cookies work)
+// (Nice to have) respond to CORS preflights quickly
+app.options('*', cors({ origin: ALLOWLIST, credentials: true }));
+
+// --- Trust proxy so secure cookies work behind Nginx
 app.set('trust proxy', isProd ? 1 : 0);
 
-// Sessions
+// --- Sessions (share across subdomains)
 app.use(session({
+  name: 'ggsid',
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
   cookie: {
     httpOnly: true,
-    secure: isProd,             // requires HTTPS in prod
+    secure: isProd,                   // requires HTTPS
     sameSite: isProd ? 'none' : 'lax',
+    domain: isProd ? '.kyle-white.com' : undefined, // <- share across api. & game.
+    maxAge: 1000 * 60 * 60 * 24 * 7,  // 7 days
   },
 }));
 
@@ -70,30 +77,18 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.json());
 
-// ✅ Routes
-app.use('/auth', steamAuth);
+// --- Routes
+// If your steamAuth router needs CLIENT_URL, pass it in (see note below)
+app.use('/auth', steamAuth({ clientUrl: CLIENT_URL, apiOrigin: API_ORIGIN }));
 app.use('/api/games', gamesRoute);
 app.use('/api', steamTagsRoute);
 app.use('/api/recommend', recommendRoute);
 
-// ✅ Error handling
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection:', reason);
+// --- Health & 404
+app.get('/health', (_req, res) => res.json({ ok: true, uptime: process.uptime() }));
+app.use((req, res) => res.status(404).json({ error: 'Not found', path: req.originalUrl }));
+
+// --- Start
+app.listen(5000, '0.0.0.0', () => {
+  console.log('✅ Server listening on http://localhost:5000');
 });
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-});
-app.get('/health', (_req, res) => {
-  res.json({ ok: true, uptime: process.uptime() });
-});
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not found', path: req.originalUrl });
-});
-// ✅ Start server
-try {
-  app.listen(5000, '0.0.0.0', () => {
-    console.log('✅ Server listening on http://localhost:5000');
-  });
-} catch (err) {
-  console.error('❌ Server crashed at startup:', err);
-}
