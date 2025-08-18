@@ -280,7 +280,7 @@ function GameAI() {
                     )}
                     {/* Recommender */}
                     <div className="chatbot-container">
-                        <h1>GameGeniusAI Recommender</h1>
+                        <h1>GameGeniusAI Recommender:</h1>
 
                         <p className="chatbot-subtext">Chosen Games ({topGames.length}/3)</p>
                         <div className="top-games inside">

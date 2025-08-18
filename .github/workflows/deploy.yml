@@ -1,22 +1,49 @@
-name: Deploy static
+name: Deploy GameGeniusAI
 on:
   push:
     branches: [ main ]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  BUCKET: game.kyle-white.com
+  DIST_ID: E31H76X3F44CK2
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
+    defaults:
+      run:
+        working-directory: client      # run npm in client/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with: { node-version: 20 }
       - run: npm ci
       - run: npm run build
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::397570188272:role/github-oidc-deploy
           aws-region: us-east-1
-      - run: aws s3 sync dist/ s3://game.kyle-white.com --delete
-      - run: aws cloudfront create-invalidation --distribution-id E31H76X3F44CK2 --paths "/*"
+
+      # (optional) clean any old /src/* uploaded by mistake
+      - run: aws s3 rm s3://$BUCKET/src --recursive || true
+
+      # Long-cache all built assets except index.html
+      - name: Sync assets
+        run: |
+          aws s3 sync dist/ s3://$BUCKET --delete \
+            --exclude "index.html" \
+            --cache-control "public,max-age=31536000,immutable"
+
+      # No-cache index.html so changes appear immediately
+      - name: Upload index.html
+        run: |
+          aws s3 cp dist/index.html s3://$BUCKET/index.html \
+            --cache-control "no-cache" --content-type "text/html"
+
+      - name: Invalidate CloudFront
+        run: aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*"
