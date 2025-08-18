@@ -31,17 +31,22 @@ router.get('/steam', (req, res, next) => {
   next();
 }, passport.authenticate('steam'));
 
-// Step 2: Handle return from Steam
-router.get('/steam/return', (req, res, next) => {
-  console.log('⬅️ [steam] /auth/steam/return hit');
-  next();
-}, passport.authenticate('steam', { failureRedirect: '/' }),
-(req, res) => {
-  console.log('✅ [steam] Authenticated:', req.user);
-  console.log('➡️ Redirecting to:', `${process.env.CLIENT_URL}/gameAI`);
-  res.redirect(`${process.env.CLIENT_URL}/gameAI`);
-});
+router.get(
+  '/steam/return',
+  passport.authenticate('steam', { failureRedirect: `${process.env.CLIENT_URL}/login?err=steam_callback` }),
+  (req, res, next) => {
+    // Passport should have set req.user here
+    console.log('✅ [steam] isAuthenticated:', req.isAuthenticated(), 'sid:', req.sessionID);
 
+    // Force the session to persist the new passport data before redirecting
+    req.session.save((err) => {
+      if (err) return next(err);
+      const target = `${process.env.CLIENT_URL}/gameAI`;
+      console.log('➡️ Redirecting to:', target);
+      res.redirect(target);
+    });
+  }
+);
 // ✅ NEW: Return current authenticated user
 router.get('/user', (req, res) => {
   if (req.isAuthenticated()) {
