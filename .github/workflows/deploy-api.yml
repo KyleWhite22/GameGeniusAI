@@ -1,11 +1,12 @@
 name: Deploy API
+
 on:
   push:
     branches: [ main ]
     paths:
-      - 'backend/**'
-      - 'gameAI/backend/**'    # covers either repo layout
-  workflow_dispatch: {}        # let you run it manually
+      - '**/backend/**'                   # run when backend files change
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch: {}                   # allow manual runs from Actions tab
 
 concurrency:
   group: deploy-api
@@ -17,39 +18,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: SSH deploy
+      - name: SSH deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: ${{ secrets.EC2_HOST }}       # public IP or public DNS of your EC2
           username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key: ${{ secrets.EC2_SSH_KEY }}     # private key contents that can SSH as ec2-user
           script: |
-            set -e
+            set -euo pipefail
 
-            REPO_DIR="/home/ec2-user/gameAI"       # <-- your actual path
+            REPO_DIR="/home/ec2-user/gameAI"
+
+            # First-time clone if missing
             if [ ! -d "$REPO_DIR/.git" ]; then
-              # first-time clone; adjust URL if repo is private (use SSH)
               git clone https://github.com/KyleWhite22/GameGeniusAI.git "$REPO_DIR"
+              # If repo is private, use SSH URL and set up a deploy key:
+              # git clone git@github.com:KyleWhite22/GameGeniusAI.git "$REPO_DIR"
             fi
 
-            # pull latest
+            # Pull latest main
             git -C "$REPO_DIR" fetch --all
             git -C "$REPO_DIR" reset --hard origin/main
 
-            cd "$REPO_DIR/backend"
+            # Enter backend directory
+            if [ -d "$REPO_DIR/backend" ]; then
+              cd "$REPO_DIR/backend"
+            elif [ -d "$REPO_DIR/gameAI/backend" ]; then
+              cd "$REPO_DIR/gameAI/backend"
+            else
+              echo "❌ Could not find backend directory"; exit 1
+            fi
 
-            # load nvm/pm2 if installed via nvm
-            [ -f "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+            # Load nvm if present; ensure pm2 on PATH
+            [ -f "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" || true
             command -v pm2 >/dev/null 2>&1 || export PATH="$HOME/.npm-global/bin:$PATH"
 
-            # install deps (supports projects with or without lockfile)
-            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+            # Install deps (prefer lockfile)
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              npm install
+            fi
 
-            # pick entry (dist if you build, else server.js)
+            # Pick entry file (use dist if you build)
             APP="server.js"
             [ -f dist/server.js ] && APP="dist/server.js"
 
-            # start or reload pm2 app
+            # Reload/start PM2 app
             if pm2 describe gamegenius >/dev/null 2>&1; then
               pm2 reload gamegenius --update-env
             else
@@ -58,6 +73,6 @@ jobs:
 
             pm2 save
 
-            # quick health check
+            # Health check (fail the job if not healthy)
             sleep 2
             curl -fsS http://127.0.0.1:5000/health || (pm2 logs --lines 100; exit 1)
