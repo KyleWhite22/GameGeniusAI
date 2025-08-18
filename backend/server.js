@@ -30,39 +30,55 @@ const isProd = process.env.NODE_ENV === 'production';
 // Allowed origins for CORS
 const PROD_ORIGINS = [
   'https://kyle-white.com',
-  'https://www.kyle-white.com'
+  'https://www.kyle-white.com',
+  'https://game.kyle-white.com',
 ];
 const DEV_ORIGINS = [
   'http://localhost:5173'
 ];
+const ALLOWLIST = isProd ? PROD_ORIGINS : DEV_ORIGINS;
 
-// CORS
-app.use(cors({
-  origin: (origin, cb) => {
-    // allow non-browser tools without Origin header
-    if (!origin) return cb(null, true);
+const corsCheck = (origin, cb) => {
+  if (!origin) return cb(null, true);            // allow curl/postman
+  return ALLOWLIST.includes(origin)
+    ? cb(null, true)
+    : cb(new Error(`CORS: origin not allowed: ${origin}`));
+};
 
-    const allowed = isProd ? PROD_ORIGINS : DEV_ORIGINS;
-    if (allowed.includes(origin)) return cb(null, true);
+app.use(cors({ origin: corsCheck, credentials: true }));
 
-    return cb(new Error(`CORS: origin not allowed: ${origin}`));
-  },
-  credentials: true,
-}));
+// Preflight handler WITHOUT a route path (avoids path-to-regexp issues)
+app.use((req, res, next) => {
+  if (req.method !== 'OPTIONS') return next();
+  const origin = req.headers.origin;
+  if (origin && ALLOWLIST.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    req.header('Access-Control-Request-Headers') || 'Content-Type, Authorization'
+  );
+  res.sendStatus(204);
+});
 
 // Trust proxy (needed in prod behind Nginx so secure cookies work)
-app.set('trust proxy', isProd ? 1 : 0);
+app.set('trust proxy', 1);
 
-// Sessions
 app.use(session({
+  name: 'ggsid',
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
   cookie: {
     httpOnly: true,
-    secure: isProd,             // requires HTTPS in prod
-    sameSite: isProd ? 'none' : 'lax',
+    secure: true,                 // prod over HTTPS
+    sameSite: 'none',             // allow cross-site cookie
+    domain: '.kyle-white.com',    // share across subdomains
+    maxAge: 1000 * 60 * 60 * 24 * 7,
   },
 }));
 
