@@ -79,7 +79,7 @@ app.use(express.json());
 
 // --- Routes
 // If your steamAuth router needs CLIENT_URL, pass it in (see note below)
-app.use('/auth', steamAuth({ clientUrl: CLIENT_URL, apiOrigin: API_ORIGIN }));
+app.use('/auth', steamAuth);
 app.use('/api/games', gamesRoute);
 app.use('/api', steamTagsRoute);
 app.use('/api/recommend', recommendRoute);
