@@ -40,59 +40,41 @@ jobs:
 
           REPO_DIR="/home/ec2-user/gameAI"
 
-          # first-time clone
           if [ ! -d "$REPO_DIR/.git" ]; then
-            git clone https://github.com/KyleWhite22/GameGeniusAI.git "$REPO_DIR"
+            sudo -iu ec2-user bash -lc "git clone https://github.com/KyleWhite22/GameGeniusAI.git '$REPO_DIR'"
           fi
 
-          # pull latest main
-          git -C "$REPO_DIR" fetch --all
-          git -C "$REPO_DIR" reset --hard origin/main
+          sudo -iu ec2-user bash -lc "git -C '$REPO_DIR' fetch --all && git -C '$REPO_DIR' reset --hard origin/main"
 
-          # enter backend
-          if [ -d "$REPO_DIR/backend" ]; then
-            cd "$REPO_DIR/backend"
-          elif [ -d "$REPO_DIR/gameAI/backend" ]; then
-            cd "$REPO_DIR/gameAI/backend"
-          else
-            echo "❌ Could not find backend directory"; exit 1
-          fi
+          BACKEND="$REPO_DIR/backend"
+          [ -d "$REPO_DIR/gameAI/backend" ] && BACKEND="$REPO_DIR/gameAI/backend"
 
-          # load nvm if used; ensure pm2 on PATH
-          [ -f "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" || true
-          command -v pm2 >/dev/null 2>&1 || export PATH="$HOME/.npm-global/bin:$PATH"
+          sudo -iu ec2-user bash -lc "
+            set -e
+            cd '$BACKEND'
+            if [ -s ~/.nvm/nvm.sh ]; then . ~/.nvm/nvm.sh; nvm use --lts >/dev/null 2>&1 || true; fi
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+            APP='server.js'; [ -f dist/server.js ] && APP='dist/server.js'
+            if pm2 describe gamegenius >/dev/null 2>&1; then
+              pm2 reload gamegenius --update-env
+            else
+              pm2 start \"\$APP\" --name gamegenius
+            fi
+            pm2 save
+          "
 
-          # install deps
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
-
-          # choose entry
-          APP="server.js"
-          [ -f dist/server.js ] && APP="dist/server.js"
-
-          # reload/start pm2 app
-          if pm2 describe gamegenius >/dev/null 2>&1; then
-            pm2 reload gamegenius --update-env
-          else
-            pm2 start "$APP" --name gamegenius
-          fi
-
-          pm2 save
-
-          # health check
-          sleep 2
           curl -fsS http://127.0.0.1:5000/health
           EOS
 
-          B64=$(base64 -w0 < deploy.sh)
+          B64=$(base64 -w0 < deploy.sh || base64 -b 0 < deploy.sh)
           echo "b64=$B64" >> "$GITHUB_OUTPUT"
 
-      - name: Send via SSM and wait
+      - name: Send via SSM and wait (show stdout & stderr)
         id: ssm
+        env:
+          INSTANCE_ID: ${{ env.INSTANCE_ID }}
         run: |
+          set -euo pipefail
           CMD_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
@@ -102,20 +84,29 @@ jobs:
               \"echo '${{ steps.pack.outputs.b64 }}' | base64 -d >/tmp/deploy.sh\",
               \"chmod +x /tmp/deploy.sh\",
               \"bash /tmp/deploy.sh\"
-            ]" \
-            --query "Command.CommandId" --output text)
-          echo "command_id=$CMD_ID" >> "$GITHUB_OUTPUT"
+          ]" \
+          --query "Command.CommandId" --output text)
+          echo "command_id=$CMD_ID"
 
-          aws ssm wait command-executed \
-            --command-id "$CMD_ID" \
-            --instance-id "$INSTANCE_ID"
+          aws ssm wait command-executed --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" || true
 
-          # show output for visibility
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'Status' --output text)
+          echo "Status: $STATUS"
+
+          echo "::group::STDOUT"
           aws ssm get-command-invocation \
-            --command-id "$CMD_ID" \
-            --instance-id "$INSTANCE_ID" \
-            --query 'StandardOutputContent' \
-            --output text
+            --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --query 'StandardOutputContent' --output text || true
+          echo "::endgroup::"
+
+          echo "::group::STDERR"
+          aws ssm get-command-invocation \
+            --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --query 'StandardErrorContent' --output text || true
+          echo "::endgroup::"
+
+          test "$STATUS" = "Success"
 
       - name: Verify via ALB/Nginx
         run: |
