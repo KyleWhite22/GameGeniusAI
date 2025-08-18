@@ -38,7 +38,7 @@ router.get(
     console.log('✅ isAuth after Steam:', req.isAuthenticated(), 'sid:', req.sessionID);
     req.session.save((err) => {
       if (err) return next(err);
-      res.redirect(`${process.env.CLIENT_URL}/gameAI`);
+      res.redirect(`${process.env.CLIENT_URL}/GameGeniusAI`);
     });
   }
 );
