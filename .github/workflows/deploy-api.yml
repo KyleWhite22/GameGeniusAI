@@ -1,4 +1,4 @@
-name: Deploy API
+name: Deploy API (SSM)
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
     paths:
       - '**/backend/**'                   # run when backend files change
       - '.github/workflows/deploy-api.yml'
-  workflow_dispatch: {}                   # allow manual runs from Actions tab
+  workflow_dispatch: {}                   # allow manual runs
 
 concurrency:
   group: deploy-api
@@ -15,64 +15,107 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: SSH deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets.EC2_HOST }}       # public IP or public DNS of your EC2
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}     # private key contents that can SSH as ec2-user
-          script: |
-            set -euo pipefail
+          role-to-assume: arn:aws:iam::397570188272:role/github-oidc-deploy
+          aws-region: us-east-1
 
-            REPO_DIR="/home/ec2-user/gameAI"
+      - name: Send SSM deploy command
+        id: ssm
+        env:
+          INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}   # i-xxxxxxxxxxxx
+        run: |
+          set -euo pipefail
 
-            # First-time clone if missing
-            if [ ! -d "$REPO_DIR/.git" ]; then
-              git clone https://github.com/KyleWhite22/GameGeniusAI.git "$REPO_DIR"
-              # If repo is private, use SSH URL and set up a deploy key:
-              # git clone git@github.com:KyleWhite22/GameGeniusAI.git "$REPO_DIR"
-            fi
+          # Build the deploy script as a single string (runs on the EC2 via SSM)
+          read -r -d '' SCRIPT <<'EOS'
+          set -euo pipefail
 
-            # Pull latest main
-            git -C "$REPO_DIR" fetch --all
-            git -C "$REPO_DIR" reset --hard origin/main
+          REPO_DIR="/home/ec2-user/gameAI"
 
-            # Enter backend directory
-            if [ -d "$REPO_DIR/backend" ]; then
-              cd "$REPO_DIR/backend"
-            elif [ -d "$REPO_DIR/gameAI/backend" ]; then
-              cd "$REPO_DIR/gameAI/backend"
-            else
-              echo "❌ Could not find backend directory"; exit 1
-            fi
+          # First-time clone if missing
+          if [ ! -d "$REPO_DIR/.git" ]; then
+            git clone https://github.com/KyleWhite22/GameGeniusAI.git "$REPO_DIR"
+            # If the repo is private, switch to SSH on the instance and add a deploy key:
+            # git clone git@github.com:KyleWhite22/GameGeniusAI.git "$REPO_DIR"
+          fi
 
-            # Load nvm if present; ensure pm2 on PATH
-            [ -f "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" || true
-            command -v pm2 >/dev/null 2>&1 || export PATH="$HOME/.npm-global/bin:$PATH"
+          # Pull latest main
+          git -C "$REPO_DIR" fetch --all
+          git -C "$REPO_DIR" reset --hard origin/main
 
-            # Install deps (prefer lockfile)
-            if [ -f package-lock.json ]; then
-              npm ci
-            else
-              npm install
-            fi
+          # Enter backend directory
+          if [ -d "$REPO_DIR/backend" ]; then
+            cd "$REPO_DIR/backend"
+          elif [ -d "$REPO_DIR/gameAI/backend" ]; then
+            cd "$REPO_DIR/gameAI/backend"
+          else
+            echo "❌ Could not find backend directory"; exit 1
+          fi
 
-            # Pick entry file (use dist if you build)
-            APP="server.js"
-            [ -f dist/server.js ] && APP="dist/server.js"
+          # Load nvm if present; ensure pm2 on PATH
+          [ -f "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" || true
+          command -v pm2 >/dev/null 2>&1 || export PATH="$HOME/.npm-global/bin:$PATH"
 
-            # Reload/start PM2 app
-            if pm2 describe gamegenius >/dev/null 2>&1; then
-              pm2 reload gamegenius --update-env
-            else
-              pm2 start "$APP" --name gamegenius
-            fi
+          # Install deps
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
-            pm2 save
+          # Pick entry file (use dist if you build)
+          APP="server.js"
+          [ -f dist/server.js ] && APP="dist/server.js"
 
-            # Health check (fail the job if not healthy)
-            sleep 2
-            curl -fsS http://127.0.0.1:5000/health || (pm2 logs --lines 100; exit 1)
+          # Reload/start PM2 app named "gamegenius"
+          if pm2 describe gamegenius >/dev/null 2>&1; then
+            pm2 reload gamegenius --update-env
+          else
+            pm2 start "$APP" --name gamegenius
+          fi
+
+          pm2 save
+
+          # Health check (fail the job if not healthy)
+          sleep 2
+          curl -fsS http://127.0.0.1:5000/health || (pm2 logs --lines 100; exit 1)
+          EOS
+
+          # Send the script via SSM AWS-RunShellScript
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "GameGenius API deploy from GitHub Actions" \
+            --parameters commands="[$(printf '%q' "$SCRIPT")]" \
+            --query "Command.CommandId" --output text)
+
+          echo "command_id=$CMD_ID"
+          echo "command_id=$CMD_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for command to finish
+        env:
+          INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+          CMD_ID: ${{ steps.ssm.outputs.command_id }}
+        run: |
+          set -euo pipefail
+          for i in {1..60}; do
+            STATUS=$(aws ssm list-command-invocations \
+              --command-id "$CMD_ID" \
+              --details --query "CommandInvocations[0].Status" --output text || true)
+            echo "SSM status: $STATUS"
+            case "$STATUS" in
+              Success) exit 0 ;;
+              Failed|Cancelled|TimedOut) exit 1 ;;
+              *) sleep 5 ;;
+            esac
+          done
+          echo "Timed out waiting for SSM command"; exit 1
