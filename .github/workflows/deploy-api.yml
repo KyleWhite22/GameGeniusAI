@@ -3,7 +3,13 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'gameAI/backend/**'
+      - 'backend/**'
+      - 'gameAI/backend/**'    # covers either repo layout
+  workflow_dispatch: {}        # let you run it manually
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -15,36 +21,43 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ec2-user          
+          username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
 
-            # where the repo lives on the EC2 box
-            mkdir -p /srv/gameai-api
-            cd /srv/gameai-api
-
-            # first-time clone; otherwise pull latest
-            if [ ! -d ".git" ]; then
-              git clone https://github.com/KyleWhite22/GameGeniusAI.git .
+            REPO_DIR="/home/ec2-user/gameAI"       # <-- your actual path
+            if [ ! -d "$REPO_DIR/.git" ]; then
+              # first-time clone; adjust URL if repo is private (use SSH)
+              git clone https://github.com/KyleWhite22/GameGeniusAI.git "$REPO_DIR"
             fi
-            git fetch --all
-            git reset --hard origin/main
 
-            cd gameAI/backend
+            # pull latest
+            git -C "$REPO_DIR" fetch --all
+            git -C "$REPO_DIR" reset --hard origin/main
 
-            # (optional) load nvm if you installed node via nvm
+            cd "$REPO_DIR/backend"
+
+            # load nvm/pm2 if installed via nvm
             [ -f "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+            command -v pm2 >/dev/null 2>&1 || export PATH="$HOME/.npm-global/bin:$PATH"
 
-            npm ci
+            # install deps (supports projects with or without lockfile)
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-            # pick entry file (dist if you build, else server.js)
-            APP=server.js
-            [ -f dist/server.js ] && APP=dist/server.js
+            # pick entry (dist if you build, else server.js)
+            APP="server.js"
+            [ -f dist/server.js ] && APP="dist/server.js"
 
-            # reload or start your PM2 app named "gamegenius"
-            pm2 describe gamegenius >/dev/null 2>&1 \
-              && pm2 reload gamegenius --update-env \
-              || pm2 start "$APP" --name gamegenius
+            # start or reload pm2 app
+            if pm2 describe gamegenius >/dev/null 2>&1; then
+              pm2 reload gamegenius --update-env
+            else
+              pm2 start "$APP" --name gamegenius
+            fi
 
             pm2 save
+
+            # quick health check
+            sleep 2
+            curl -fsS http://127.0.0.1:5000/health || (pm2 logs --lines 100; exit 1)
