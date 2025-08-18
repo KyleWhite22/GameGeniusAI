@@ -26,7 +26,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::397570188272:role/github-oidc-deploy
-          aws-region: us-east-1
+          aws-region: us-east-2
 
       - name: Send SSM deploy command
         id: ssm
