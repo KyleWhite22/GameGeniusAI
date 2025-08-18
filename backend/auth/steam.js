@@ -4,29 +4,16 @@ const SteamStrategy = require('passport-steam').Strategy;
 
 const router = express.Router();
 
-// --- ENV sanity ---
-const CLIENT_URL = process.env.CLIENT_URL;            // e.g. https://game.kyle-white.com
-const RETURN_URL = process.env.STEAM_RETURN_URL;      // e.g. https://api.kyle-white.com/auth/steam/return
-const REALM      = process.env.STEAM_REALM;           // e.g. https://api.kyle-white.com
-const API_KEY    = process.env.STEAM_API_KEY;
-
-if (!CLIENT_URL || !RETURN_URL || !REALM || !API_KEY) {
-  console.warn('[steam] Missing env vars:', { CLIENT_URL, RETURN_URL, REALM, API_KEY: !!API_KEY });
-}
-
 // --- Passport Setup ---
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
-
-console.log('🌐 STEAM_REALM:', REALM);
-console.log('🔁 STEAM_RETURN_URL:', RETURN_URL);
-console.log('🎯 CLIENT_URL:', CLIENT_URL);
+console.log('🌐 STEAM_REALM:', process.env.STEAM_REALM);
 
 passport.use(new SteamStrategy(
   {
-    returnURL: RETURN_URL,
-    realm: REALM,
-    apiKey: API_KEY,
+    returnURL: process.env.STEAM_RETURN_URL,
+    realm: process.env.STEAM_REALM,
+    apiKey: process.env.STEAM_API_KEY
   },
   (identifier, profile, done) => {
     process.nextTick(() => {
@@ -45,32 +32,23 @@ router.get('/steam', (req, res, next) => {
 }, passport.authenticate('steam'));
 
 // Step 2: Handle return from Steam
-router.get(
-  '/steam/return',
-  (req, res, next) => {
-    console.log('⬅️ [steam] /auth/steam/return hit');
-    next();
-  },
-  passport.authenticate('steam', { failureRedirect: `${CLIENT_URL}/login?err=steam_callback` }),
-  (req, res) => {
-    console.log('✅ [steam] Authenticated:', req.user?.id || 'unknown');
-    const target = `${CLIENT_URL}/gameAI`;
-    console.log('➡️ Redirecting to:', target);
-    res.redirect(target);
-  }
-);
-
-// Who am I?
-router.get('/user', (req, res) => {
-  res.json({ user: req.isAuthenticated() ? req.user : null });
+router.get('/steam/return', (req, res, next) => {
+  console.log('⬅️ [steam] /auth/steam/return hit');
+  next();
+}, passport.authenticate('steam', { failureRedirect: '/' }),
+(req, res) => {
+  console.log('✅ [steam] Authenticated:', req.user);
+  console.log('➡️ Redirecting to:', `${process.env.CLIENT_URL}/gameAI`);
+  res.redirect(`${process.env.CLIENT_URL}/gameAI`);
 });
 
-// Optional: logout helper
-router.post('/logout', (req, res, next) => {
-  req.logout(err => {
-    if (err) return next(err);
-    req.session.destroy(() => res.json({ ok: true }));
-  });
+// ✅ NEW: Return current authenticated user
+router.get('/user', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json({ user: req.user });
+  } else {
+    res.json({ user: null });
+  }
 });
 
 module.exports = router;

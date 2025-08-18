@@ -25,58 +25,44 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('✅ Connected to MongoDB'))
 .catch((err) => console.error('❌ MongoDB error:', err));
 
-// --- CORS (allow frontend origin)
 const isProd = process.env.NODE_ENV === 'production';
+
+// Allowed origins for CORS
 const PROD_ORIGINS = [
   'https://kyle-white.com',
-  'https://www.kyle-white.com',
-  'https://game.kyle-white.com',
+  'https://www.kyle-white.com'
 ];
-const DEV_ORIGINS = ['http://localhost:5173'];
-const ALLOWLIST = isProd ? PROD_ORIGINS : DEV_ORIGINS;
+const DEV_ORIGINS = [
+  'http://localhost:5173'
+];
 
-const corsCheck = (origin, cb) => {
-  if (!origin) return cb(null, true); // curl/postman/no Origin
-  return ALLOWLIST.includes(origin) ? cb(null, true)
-                                    : cb(new Error(`CORS: origin not allowed: ${origin}`));
-};
+// CORS
+app.use(cors({
+  origin: (origin, cb) => {
+    // allow non-browser tools without Origin header
+    if (!origin) return cb(null, true);
 
-app.use(cors({ origin: corsCheck, credentials: true }));
+    const allowed = isProd ? PROD_ORIGINS : DEV_ORIGINS;
+    if (allowed.includes(origin)) return cb(null, true);
 
-// Handle ALL preflight requests without registering a path pattern
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    const origin = req.headers.origin;
-    if (origin && ALLOWLIST.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Vary', 'Origin');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      req.header('Access-Control-Request-Headers') || 'Content-Type, Authorization'
-    );
-    return res.sendStatus(204);
-  }
-  next();
-});
+    return cb(new Error(`CORS: origin not allowed: ${origin}`));
+  },
+  credentials: true,
+}));
+
 // Trust proxy (needed in prod behind Nginx so secure cookies work)
 app.set('trust proxy', isProd ? 1 : 0);
 
 // Sessions
 app.use(session({
-  name: 'ggsid',
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
   cookie: {
     httpOnly: true,
-    secure: isProd,
+    secure: isProd,             // requires HTTPS in prod
     sameSite: isProd ? 'none' : 'lax',
-    domain: isProd ? '.kyle-white.com' : undefined, // share across subdomains
-    maxAge: 1000 * 60 * 60 * 24 * 7,
   },
 }));
 
