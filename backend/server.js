@@ -51,7 +51,7 @@ app.use(cors({
   credentials: true,
 }));
 
-app.options('(.*)', cors({
+app.options(/.*/, cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
     const allowed = isProd ? PROD_ORIGINS : DEV_ORIGINS;
