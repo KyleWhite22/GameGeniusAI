@@ -12,6 +12,10 @@ concurrency:
   group: deploy-api
   cancel-in-progress: true
 
+permissions:
+  id-token: write  
+  contents: read
+
 env:
   AWS_REGION: us-east-2
   INSTANCE_ID: i-05100bae19aa8379a
