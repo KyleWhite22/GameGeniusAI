@@ -1,38 +1,36 @@
+/* Always helpful */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { width: 100%; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+
 /* Page base */
 html, body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background-color: #111 !important;   /* solid black */
+  background-color: #111 !important;
   color: #fff;
   font-family: Arial, sans-serif;
 }
 
-/* Full-viewport, immune to parent layout */
+/* Full-viewport wrapper */
 .login-fullscreen {
-  position: fixed;        /* ignore any outer grids/columns */
-  inset: 0;               /* top:0 right:0 bottom:0 left:0 */
+  /* Switch from fixed to a mobile-friendly approach */
+  min-height: 100svh;                /* accounts for mobile UI chrome */
   display: grid;
-  place-items: center;    /* perfect centering */
-  padding: 2rem;
+  place-items: center;
+  padding: 0;                         /* avoid pushing past 100vw */
 }
 
-/* The centered box */
+/* Centered card */
 .login-card {
-  width: min(480px, 92vw); /* tidy on big screens, responsive on small */
+  width: min(480px, 92dvw);           /* use dvw to avoid scrollbar-based shifts */
+  margin: 0 auto;                     /* belt-and-suspenders centering */
   text-align: center;
 }
 
-/* Typography */
-.login-card h1 {
-  font-size: 3rem;
-  margin: 0 0 0.5rem;
-}
-.login-card p {
-  font-size: 1.125rem;
-  margin: 0 0 1.5rem;
-  color: #ccc;
-}
+/* Typography (scale down on small screens) */
+.login-card h1 { font-size: clamp(1.9rem, 7vw, 3rem); margin: 0 0 0.5rem; }
+.login-card p  { font-size: clamp(1rem, 4.2vw, 1.125rem); margin: 0 0 1.5rem; color: #ccc; }
 
 /* Buttons */
 button {
@@ -59,7 +57,14 @@ button:hover { background-color: #21b05a; }
   transition: all 0.2s ease;
 }
 
-/* In case some global style sets text-align left */
-.login-fullscreen, .login-card, .login-card * {
-  text-align: center;
+/* Respect iOS safe areas on small screens */
+@media (max-width: 640px) {
+  .login-fullscreen {
+    padding:
+      max(16px, env(safe-area-inset-top))
+      max(16px, env(safe-area-inset-right))
+      max(16px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+  }
+  .login-card { width: min(480px, 92dvw); }
 }
