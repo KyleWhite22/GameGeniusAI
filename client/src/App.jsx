@@ -9,7 +9,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<GameAILogin />} />
-        <Route path="/gameAI" element={<GameAI />} />
+        <Route path="/GameGeniusAI" element={<GameAI />} />
       </Routes>
     </Router>
   );
