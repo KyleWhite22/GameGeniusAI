@@ -110,7 +110,7 @@ jobs:
           done
 
           echo "Health FAILED; last PM2 logs:"
-          pm2 logs gamegenius --lines 120 || true
+          sudo -iu ec2-user bash -lc "pm2 logs gamegenius --lines 120 || true"
           exit 1
           EOS
 
