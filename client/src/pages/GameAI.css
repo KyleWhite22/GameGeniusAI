@@ -74,7 +74,7 @@ html, body {
   font-size: 0.95rem !important;
   margin: 0 !important;
   position: relative !important;
-  top: -10px !important;           /* nudge up to sit level with avatar */
+  top: -3px !important;           /* nudge up to sit level with avatar */
   display: inline-block !important;
   vertical-align: middle !important;
   text-shadow: none !important;
