@@ -31,11 +31,34 @@ jobs:
           role-to-assume: arn:aws:iam::397570188272:role/github-oidc-deploy
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Build remote deploy script (base64)
+      # 0) Quick SSM smoke test so we fail fast if SSM perms/region/instance are wrong
+      - name: SSM smoke test
+        id: smoke
+        run: |
+          set -euo pipefail
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "${{ env.INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands='["set -euxo pipefail","whoami","uname -a","date"]' \
+            --query "Command.CommandId" --output text)
+          aws ssm wait command-executed --command-id "$CMD_ID" --instance-id "${{ env.INSTANCE_ID }}" || true
+          STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "${{ env.INSTANCE_ID }}" --query 'Status' --output text)
+          echo "Smoke status: $STATUS"
+          echo "::group::SMOKE STDOUT"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "${{ env.INSTANCE_ID }}" --query 'StandardOutputContent' --output text || true
+          echo "::endgroup::"
+          echo "::group::SMOKE STDERR"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "${{ env.INSTANCE_ID }}" --query 'StandardErrorContent' --output text || true
+          echo "::endgroup::"
+          test "$STATUS" = "Success"
+
+      # 1) Build the deploy script and base64 it (single-line for safe transport)
+      - name: Build deploy script (base64)
         id: pack
         run: |
           cat > deploy.sh <<'EOS'
           set -euo pipefail
+          set -x
 
           REPO_DIR="/home/ec2-user/gameAI"
           sudo mkdir -p "$REPO_DIR"
@@ -53,10 +76,23 @@ jobs:
           git -C "$REPO_DIR" fetch --all
           git -C "$REPO_DIR" reset --hard origin/main
 
-          # Install + PM2
+          # Backend path (your repo has /backend at top level)
           cd "$REPO_DIR/backend"
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
+          # Tooling info
+          node -v || true
+          npm -v || true
+          pm2 -v || true
+          which pm2 || true
+
+          # Install deps
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+          # Start/reload with PM2
           APP="server.js"; [ -f dist/server.js ] && APP="dist/server.js"
           if pm2 describe gamegenius >/dev/null 2>&1; then
             pm2 reload gamegenius --update-env
@@ -65,51 +101,53 @@ jobs:
           fi
           pm2 save
 
-          # Health check (retry a bit)
-          for i in $(seq 1 15); do
+          # Health check with retries
+          for i in $(seq 1 20); do
             code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/health || true)
             echo "Health attempt $i -> $code"
             [ "$code" = "200" ] && exit 0
             sleep 1
           done
 
-          echo "Health FAILED; last logs:"
-          pm2 logs gamegenius --lines 80 || true
+          echo "Health FAILED; last PM2 logs:"
+          pm2 logs gamegenius --lines 120 || true
           exit 1
           EOS
 
+          # Produce a single-line base64 (GNU and BSD compatible)
           B64=$(base64 -w0 < deploy.sh 2>/dev/null || base64 -b 0 < deploy.sh)
           echo "b64=$B64" >> "$GITHUB_OUTPUT"
 
+      # 2) Ship it to the instance and run it
       - name: Send via SSM and wait
         id: ssm
-        env:
-          INSTANCE_ID: ${{ env.INSTANCE_ID }}
         run: |
           set -euo pipefail
           CMD_ID=$(aws ssm send-command \
-            --instance-ids "$INSTANCE_ID" \
+            --instance-ids "${{ env.INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --comment "GameGeniusAI API deploy" \
             --parameters commands="[
-              \"set -euo pipefail\",
-              \"echo '${{ steps.pack.outputs.b64 }}' | base64 -d >/tmp/deploy.sh\",
-              \"bash /tmp/deploy.sh\"
+              \"set -euxo pipefail\",
+              \"printf '%s' '${{ steps.pack.outputs.b64 }}' | base64 -d >/root/deploy.sh\",
+              \"bash /root/deploy.sh\"
             ]" \
             --query "Command.CommandId" --output text)
-          aws ssm wait command-executed --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" || true
-          STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'Status' --output text)
+
+          aws ssm wait command-executed --command-id "$CMD_ID" --instance-id "${{ env.INSTANCE_ID }}" || true
+          STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "${{ env.INSTANCE_ID }}" --query 'Status' --output text)
           echo "Status: $STATUS"
 
           echo "::group::STDOUT"
-          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'StandardOutputContent' --output text || true
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "${{ env.INSTANCE_ID }}" --query 'StandardOutputContent' --output text || true
           echo "::endgroup::"
 
           echo "::group::STDERR"
-          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'StandardErrorContent' --output text || true
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "${{ env.INSTANCE_ID }}" --query 'StandardErrorContent' --output text || true
           echo "::endgroup::"
 
           test "$STATUS" = "Success"
 
-      - name: Verify over HTTPS through Nginx
+      # 3) Quick check through Nginx/HTTPS
+      - name: Verify over HTTPS via Nginx
         run: curl -sSfI https://api.kyle-white.com/health
