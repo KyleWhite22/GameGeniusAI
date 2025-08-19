@@ -1,11 +1,9 @@
 name: Deploy API
-
 on:
   push:
     branches: [ main ]
     paths:
-      - 'backend/**'                    # ← if your backend is at repo-root/backend/
-      # - 'gameAI/backend/**'          # ← use this instead if it’s under gameAI/backend/
+      - 'backend/**'
       - '.github/workflows/deploy-api.yml'
   workflow_dispatch: {}
 
@@ -38,67 +36,57 @@ jobs:
         run: |
           cat > deploy.sh <<'EOS'
           set -euo pipefail
-          set -x
 
           REPO_DIR="/home/ec2-user/gameAI"
-
-          # Ensure repo dir exists & is owned by ec2-user
           sudo mkdir -p "$REPO_DIR"
           sudo chown -R ec2-user:ec2-user "$REPO_DIR"
 
-          # First-time clone & all git ops as ec2-user
+          # If not a git repo, move aside and clone fresh
           if [ ! -d "$REPO_DIR/.git" ]; then
-            sudo -iu ec2-user bash -lc "git clone https://github.com/KyleWhite22/GameGeniusAI.git '$REPO_DIR'"
+            if [ "$(ls -A "$REPO_DIR" 2>/dev/null)" ]; then
+              mv "$REPO_DIR" "${REPO_DIR}.bak.$(date +%s)"
+            fi
+            git clone https://github.com/KyleWhite22/GameGeniusAI.git "$REPO_DIR"
           fi
-          sudo -iu ec2-user bash -lc "git -C '$REPO_DIR' fetch --all && git -C '$REPO_DIR' reset --hard origin/main"
 
-          # Decide backend path (support both layouts)
-          BACKEND="$REPO_DIR/backend"
-          [ -d "$REPO_DIR/gameAI/backend" ] && BACKEND="$REPO_DIR/gameAI/backend"
+          # Update to main
+          git -C "$REPO_DIR" fetch --all
+          git -C "$REPO_DIR" reset --hard origin/main
 
-          # Install deps + reload/start PM2 as ec2-user (load nvm if present)
-          sudo -iu ec2-user bash -lc '
-            set -e
-            if [ -s ~/.nvm/nvm.sh ]; then . ~/.nvm/nvm.sh; nvm use --lts >/dev/null 2>&1 || true; fi
-            cd "'"$BACKEND"'"
-            if [ -f package-lock.json ]; then npm ci; else npm install; fi
-            APP="server.js"; [ -f dist/server.js ] && APP="dist/server.js"
-            if pm2 describe gamegenius >/dev/null 2>&1; then
-              pm2 reload gamegenius --update-env
-            else
-              pm2 start "$APP" --name gamegenius
-            fi
-            pm2 save
-          '
+          # Install + PM2
+          cd "$REPO_DIR/backend"
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-          # Robust health check with retries
-          for i in $(seq 1 20); do
-            CODE=$(curl -sk -o /tmp/h -w "%{http_code}" http://127.0.0.1:5000/health || true)
-            echo "Health attempt $i -> HTTP $CODE"
-            if [ "$CODE" = "200" ]; then
-              echo "Health OK"
-              cat /tmp/h || true
-              exit 0
-            fi
+          APP="server.js"; [ -f dist/server.js ] && APP="dist/server.js"
+          if pm2 describe gamegenius >/dev/null 2>&1; then
+            pm2 reload gamegenius --update-env
+          else
+            pm2 start "$APP" --name gamegenius
+          fi
+          pm2 save
+
+          # Health check (retry a bit)
+          for i in $(seq 1 15); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/health || true)
+            echo "Health attempt $i -> $code"
+            [ "$code" = "200" ] && exit 0
             sleep 1
           done
 
-          echo "Health check FAILED. Last PM2 logs:"
-          sudo -iu ec2-user bash -lc "pm2 logs gamegenius --lines 200 || true"
+          echo "Health FAILED; last logs:"
+          pm2 logs gamegenius --lines 80 || true
           exit 1
           EOS
 
-          # base64 in a cross-platform way on GitHub runners
           B64=$(base64 -w0 < deploy.sh 2>/dev/null || base64 -b 0 < deploy.sh)
           echo "b64=$B64" >> "$GITHUB_OUTPUT"
 
-      - name: Send via SSM and wait (show stdout & stderr)
+      - name: Send via SSM and wait
         id: ssm
         env:
           INSTANCE_ID: ${{ env.INSTANCE_ID }}
         run: |
           set -euo pipefail
-
           CMD_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
@@ -106,32 +94,22 @@ jobs:
             --parameters commands="[
               \"set -euo pipefail\",
               \"echo '${{ steps.pack.outputs.b64 }}' | base64 -d >/tmp/deploy.sh\",
-              \"chmod +x /tmp/deploy.sh\",
               \"bash /tmp/deploy.sh\"
             ]" \
             --query "Command.CommandId" --output text)
-          echo "command_id=$CMD_ID"
-
-          # Wait (don’t abort early; we want logs)
           aws ssm wait command-executed --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" || true
-
-          STATUS=$(aws ssm get-command-invocation \
-            --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'Status' --output text)
+          STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'Status' --output text)
           echo "Status: $STATUS"
 
           echo "::group::STDOUT"
-          aws ssm get-command-invocation \
-            --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
-            --query 'StandardOutputContent' --output text || true
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'StandardOutputContent' --output text || true
           echo "::endgroup::"
 
           echo "::group::STDERR"
-          aws ssm get-command-invocation \
-            --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
-            --query 'StandardErrorContent' --output text || true
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'StandardErrorContent' --output text || true
           echo "::endgroup::"
 
           test "$STATUS" = "Success"
 
-      - name: Verify via Nginx
-        run: curl -I https://api.kyle-white.com/health
+      - name: Verify over HTTPS through Nginx
+        run: curl -sSfI https://api.kyle-white.com/health
