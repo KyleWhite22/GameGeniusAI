@@ -10,7 +10,7 @@ function GameAILogin() {
       alert('Config error: API URL missing.');
       return;
     }
-    localStorage.setItem('resumeUrl', '/gameAI');
+    localStorage.setItem('resumeUrl', '/GameGeniusAI');
     window.location.href = `${API}/auth/steam`;
   };
 
