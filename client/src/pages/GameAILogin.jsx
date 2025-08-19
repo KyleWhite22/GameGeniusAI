@@ -15,13 +15,14 @@ function GameAILogin() {
   };
 
   return (
-    <div className="home-container">
-      <h1>GameGeniusAI</h1>
-      <p>Recommends you video games!</p>
-
-      <button className="steam-login-btn" onClick={handleSteamLogin}>
-        Log in with Steam
-      </button>
+    <div className="login-fullscreen">
+      <div className="login-card">
+        <h1>GameGeniusAI</h1>
+        <p>Recommends you video games!</p>
+        <button className="steam-login-btn" onClick={handleSteamLogin}>
+          Log in with Steam
+        </button>
+      </div>
     </div>
   );
 }

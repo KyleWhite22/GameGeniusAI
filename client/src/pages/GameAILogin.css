@@ -1,51 +1,65 @@
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background-color: #111;
-    color: #fff;
+/* Page base */
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background-color: #111 !important;   /* solid black */
+  color: #fff;
+  font-family: Arial, sans-serif;
 }
 
-.home-container {
-  min-height: 100vh;            /* fill viewport height */
-  display: flex;                /* flexbox centering */
-  flex-direction: column;
-  justify-content: center;      /* vertical centering */
-  align-items: center;          /* horizontal centering */
+/* Full-viewport, immune to parent layout */
+.login-fullscreen {
+  position: fixed;        /* ignore any outer grids/columns */
+  inset: 0;               /* top:0 right:0 bottom:0 left:0 */
+  display: grid;
+  place-items: center;    /* perfect centering */
+  padding: 2rem;
+}
+
+/* The centered box */
+.login-card {
+  width: min(480px, 92vw); /* tidy on big screens, responsive on small */
   text-align: center;
 }
-header h1 {
-    font-size: 3rem;
-    margin-bottom: 0.5rem;
+
+/* Typography */
+.login-card h1 {
+  font-size: 3rem;
+  margin: 0 0 0.5rem;
+}
+.login-card p {
+  font-size: 1.125rem;
+  margin: 0 0 1.5rem;
+  color: #ccc;
 }
 
-header p {
-    font-size: 1.25rem;
-    margin-bottom: 2rem;
-    color: #ccc;
-}
-
+/* Buttons */
 button {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    background-color: #47cfb6;
-    border: none;
-    color: white;
-    border-radius: 8px;
-    cursor: pointer;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  background-color: #47cfb6;
+  border: none;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+}
+button:hover { background-color: #21b05a; }
+
+.steam-login-btn {
+  margin-top: 0.5rem;
+  padding: 1rem 2rem;
+  background-color: #171a21;
+  color: white;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #00ff00;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-    button:hover {
-        background-color: #21b05a;
-    }
-.steam-login-btn {
-    margin-top: 2rem;
-    padding: 1rem 2rem;
-    background-color: #171a21;
-    color: white;
-    font-size: 1rem;
-    border: none;
-    border-radius: 8px;
-    box-shadow: 0 0 10px #00ff00;
-    cursor: pointer;
-    transition: all 0.2s ease;
+/* In case some global style sets text-align left */
+.login-fullscreen, .login-card, .login-card * {
+  text-align: center;
 }
