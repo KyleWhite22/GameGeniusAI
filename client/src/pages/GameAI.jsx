@@ -4,10 +4,30 @@ import './GameAI.css';
 
 const API = import.meta.env.VITE_API_URL;
 
+/* ----------------------------- Mode & Storage ----------------------------- */
 function isDemoMode() {
   return localStorage.getItem('authMode') === 'demo';
 }
+function modeScope(user) {
+  // Stable buckets: 'demo' OR 'steam:<steamId>' (unknown until we know the user)
+  return isDemoMode() ? 'demo' : (user?.id ? `steam:${user.id}` : 'steam:unknown');
+}
+function lsKey(base, scope) {
+  return `${base}:${scope}`;
+}
+function getScopedItem(base, scope, fallback = null) {
+  try {
+    const raw = localStorage.getItem(lsKey(base, scope));
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function setScopedItem(base, scope, value) {
+  localStorage.setItem(lsKey(base, scope), JSON.stringify(value));
+}
 
+/* --------------------------------- Helpers -------------------------------- */
 async function getTagsForApp(appid) {
   const res = await fetch(`${API}/api/tags/${appid}`, { credentials: 'include' });
   if (!res.ok) throw new Error(`Failed to fetch tags for app ${appid}`);
@@ -20,7 +40,6 @@ async function enrichWithTags(games) {
   if (isDemoMode()) {
     return games.map((g) => ({ ...g, tags: Array.isArray(g.tags) ? g.tags : [] }));
   }
-
   const enriched = await Promise.all(
     games.map(async (g) => {
       if (Array.isArray(g.tags) && g.tags.length) return g;
@@ -35,7 +54,7 @@ function readDemoGames() {
   try {
     const raw = localStorage.getItem('demoGames');
     const arr = raw ? JSON.parse(raw) : [];
-    // Make sure every demo game has tags (so we don’t call /api/tags)
+    // Ensure every demo game has tags (so we don’t call /api/tags)
     return Array.isArray(arr) ? arr.map((g) => ({ ...g, tags: g.tags || [] })) : [];
   } catch {
     return [];
@@ -44,8 +63,10 @@ function readDemoGames() {
 
 const DEMO_USER = { id: 'DEMO_USER', displayName: '', photos: [] };
 
+/* -------------------------------- Component -------------------------------- */
 function GameAI() {
   const navigate = useNavigate();
+
   const [user, setUser] = useState(null);
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,13 +75,17 @@ function GameAI() {
   const [recommendations, setRecommendations] = useState('');
   const [showGamePicker, setShowGamePicker] = useState(false);
   const [customSelection, setCustomSelection] = useState([]);
-  const requestRef = useRef();
-  const [ratings, setRatings] = useState(() => {
-    const stored = localStorage.getItem('gameRatings');
-    return stored ? JSON.parse(stored) : {};
-  });
   const [paused, setPaused] = useState(false);
+  const [ratingModal, setRatingModal] = useState({ open: false, game: null, temp: 0 });
 
+  // Scoped storage control
+  const scopeRef = useRef('');            // current scope used to guard async writes
+  const [scope, setScope] = useState(''); // string like 'demo' or 'steam:<id>'
+
+  // Ratings are also scoped
+  const [ratings, setRatings] = useState({});
+
+  // Avatar (for Steam users only)
   const rawAvatar =
     user?.photos?.[2]?.value ??
     user?.photos?.[0]?.value ??
@@ -69,14 +94,12 @@ function GameAI() {
     '';
   const avatar = rawAvatar ? rawAvatar.replace(/^http:\/\//, 'https://') : '';
 
-  const [ratingModal, setRatingModal] = useState({ open: false, game: null, temp: 0 });
-
+  /* ------------------------------ UI Handlers ------------------------------ */
   function openRatingModal(game) {
     setPaused(true);
     setRatingModal({ open: true, game, temp: ratings[game.appid] || 0 });
     document.body.classList.add('no-scroll');
   }
-
   function closeRatingModal() {
     setPaused(false);
     setRatingModal({ open: false, game: null, temp: 0 });
@@ -84,34 +107,24 @@ function GameAI() {
   }
 
   function exitDemoOrSignOut(navigateTo = 'https://game.kyle-white.com') {
-  localStorage.removeItem('authMode');
-  localStorage.removeItem('demoGames');
-  localStorage.removeItem('topThree');
-  localStorage.removeItem('gameRatings');
-  localStorage.removeItem('resumeUrl');
-  window.location.href = navigateTo;
-}
+    localStorage.removeItem('authMode');
+    // demo-only data can remain; namespacing prevents bleed, but we can reset memory state:
+    setTopGames([]);
+    setGames([]);
+    setRecommendations('');
+    window.location.href = navigateTo;
+  }
 
   function SteamPrivacyInstructions() {
     return (
       <div className="steam-privacy-instructions">
         <h2>Make Sure Your Steam Game Details Are Public</h2>
         <ol>
-          <li>
-            Open <strong>Steam</strong> and log in.
-          </li>
-          <li>
-            Click your name in the top-right → <strong>View my profile</strong>.
-          </li>
-          <li>
-            On your profile page, click <strong>Edit Profile</strong> → <strong>Privacy Settings</strong>.
-          </li>
-          <li>
-            Under <strong>Game details</strong>, set it to <strong>Public</strong>.
-          </li>
-          <li>
-            Uncheck <strong>“Always keep my total playtime private”</strong>.
-          </li>
+          <li>Open <strong>Steam</strong> and log in.</li>
+          <li>Click your name in the top-right → <strong>View my profile</strong>.</li>
+          <li>On your profile page, click <strong>Edit Profile</strong> → <strong>Privacy Settings</strong>.</li>
+          <li>Under <strong>Game details</strong>, set it to <strong>Public</strong>.</li>
+          <li>Uncheck <strong>“Always keep my total playtime private”</strong>.</li>
           <li>Refresh this page and your games should appear!</li>
         </ol>
       </div>
@@ -119,9 +132,7 @@ function GameAI() {
   }
 
   const setRating = (appid, value) => {
-    const updated = { ...ratings, [appid]: value };
-    setRatings(updated);
-    localStorage.setItem('gameRatings', JSON.stringify(updated));
+    setRatings((prev) => ({ ...prev, [appid]: value }));
   };
 
   // Clear old recommendations when selection changes
@@ -129,30 +140,43 @@ function GameAI() {
     setRecommendations('');
   }, [topGames]);
 
-  // 1) Load cached topThree on mount (and enrich with tags if missing)
+  /* --------------------------- Scope & Scoped Loads -------------------------- */
+
+  // Keep scope in sync with current mode/user
   useEffect(() => {
-    (async () => {
-      try {
-        const stored = localStorage.getItem('topThree');
-        if (stored && stored !== 'undefined') {
-          const parsed = JSON.parse(stored) || [];
-          const needsTags = parsed.some((g) => !Array.isArray(g.tags) || g.tags.length === 0);
-          const finalTop = needsTags ? await enrichWithTags(parsed) : parsed;
+    const s = modeScope(user);
+    scopeRef.current = s;
+    setScope(s);
+  }, [user]);
 
-          setTopGames(finalTop);
-          setCustomSelection(finalTop);
-          if (needsTags) localStorage.setItem('topThree', JSON.stringify(finalTop));
-        } else {
-          setTopGames([]);
-        }
-      } catch (err) {
-        console.error('❌ Failed to parse/enrich topThree:', err);
-        setTopGames([]);
-      }
-    })();
-  }, []);
+  // Load ratings whenever scope changes
+  useEffect(() => {
+    if (!scope) return;
+    setRatings(getScopedItem('gameRatings', scope, {}));
+  }, [scope]);
 
-  // 2) Load user → games → resume (demo-first so it works even if API is missing)
+  // Persist ratings whenever they change
+  useEffect(() => {
+    if (!scope) return;
+    setScopedItem('gameRatings', scope, ratings);
+  }, [scope, ratings]);
+
+  // Load topThree whenever scope changes
+  useEffect(() => {
+    if (!scope) return;
+    const saved = getScopedItem('topThree', scope, null);
+    if (saved && saved !== 'undefined') {
+      const parsed = Array.isArray(saved) ? saved : [];
+      setTopGames(parsed);
+      setCustomSelection(parsed);
+    } else {
+      setTopGames([]);
+      setCustomSelection([]);
+    }
+  }, [scope]);
+
+  /* -------------------------- Demo / Steam boot flow ------------------------- */
+
   useEffect(() => {
     const safeNavigateResume = () => {
       const resumeUrl = localStorage.getItem('resumeUrl');
@@ -165,26 +189,25 @@ function GameAI() {
     };
 
     const load = async () => {
-      // --- DEMO MODE: no network calls for auth/games ---
+      // DEMO MODE BOOT (no auth calls)
       if (isDemoMode()) {
         const demoGames = readDemoGames();
-        setUser(DEMO_USER);
+        setUser(DEMO_USER);       // this sets scope to 'demo'
         setGames(demoGames);
 
-        // seed topThree from localStorage if present; otherwise first up to 3
-        const stored = localStorage.getItem('topThree');
-        const initialTop = stored && stored !== 'undefined' ? JSON.parse(stored) : demoGames.slice(0, 3);
-
+        // Seed topThree for demo if none yet in this scope
+        const savedTop = getScopedItem('topThree', 'demo', null);
+        const initialTop = Array.isArray(savedTop) ? savedTop : demoGames.slice(0, 3);
         setTopGames(initialTop);
         setCustomSelection(initialTop);
-        localStorage.setItem('topThree', JSON.stringify(initialTop));
+        setScopedItem('topThree', 'demo', initialTop);
 
         safeNavigateResume();
         setLoading(false);
         return;
       }
 
-      // --- NORMAL STEAM FLOW ---
+      // STEAM FLOW
       if (!API) {
         console.error('VITE_API_URL is not defined at build time.');
         setLoading(false);
@@ -197,7 +220,7 @@ function GameAI() {
         const data = await res.json();
 
         if (data.user) {
-          setUser(data.user);
+          setUser(data.user);       // this sets scope to `steam:<id>`
           await fetchGames(data.user.id);
           safeNavigateResume();
         } else {
@@ -210,71 +233,86 @@ function GameAI() {
     };
 
     load();
+    // we intentionally only depend on navigate; scope is handled elsewhere
   }, [navigate]);
 
   async function fetchGames(steamId) {
+    const myScope = scopeRef.current;
     try {
       const res = await fetch(`${API}/api/games/user/${steamId}`, { credentials: 'include' });
       if (!res.ok) throw new Error(`GET /api/games/user/${steamId} -> ${res.status}`);
       const data = await res.json();
 
+      if (scopeRef.current !== myScope) return; // bail if mode/user changed mid-flight
       setGames(data.allGames || []);
 
       if (Array.isArray(data.topThree) && data.topThree.length) {
         const needsTags = data.topThree.some((g) => !Array.isArray(g.tags) || g.tags.length === 0);
         const finalTop = needsTags ? await enrichWithTags(data.topThree) : data.topThree;
 
+        if (scopeRef.current !== myScope) return;
         setTopGames(finalTop);
         setCustomSelection(finalTop);
-        localStorage.setItem('topThree', JSON.stringify(finalTop));
+        setScopedItem('topThree', myScope, finalTop);
       } else {
-        localStorage.removeItem('topThree');
+        if (scopeRef.current !== myScope) return;
         setTopGames([]);
         setCustomSelection([]);
+        setScopedItem('topThree', myScope, []);
       }
       setLoading(false);
     } catch (err) {
+      if (scopeRef.current !== myScope) return;
       console.error('Failed to fetch games:', err);
       setLoading(false);
     }
   }
 
   const fetchRecommendations = async () => {
-  if (!topGames.length) {
-    setRecommendations('Pick at least 1 game to get recommendations.');
-    return;
-  }
-  setLoading(true);
-  try {
-    // ensure tags; in demo these are already present / enriched locally
-    const ensured = await enrichWithTags(topGames);
-    if (ensured !== topGames) {
-      setTopGames(ensured);
-      localStorage.setItem('topThree', JSON.stringify(ensured));
+    if (!topGames.length) {
+      setRecommendations('Pick at least 1 game to get recommendations.');
+      return;
     }
+    const myScope = scopeRef.current;
+    setLoading(true);
+    try {
+      // ensure tags; in demo these are already present / enriched locally
+      const ensured = await enrichWithTags(topGames);
 
-    const demo = isDemoMode();
-    const res = await fetch(`${API}/api/recommend`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: demo ? 'omit' : 'include', // demo has no session cookie
-      body: JSON.stringify({
-        gamesWithTags: ensured,
-        mode: demo ? 'demo' : 'steam',
-        userId: demo ? 'DEMO_USER' : undefined,
-      }),
-    });
-    if (!res.ok) throw new Error(`POST /api/recommend -> ${res.status}`);
-    const data = await res.json();
-    setRecommendations(data.recommendations);
-  } catch (err) {
-    setRecommendations('Failed to fetch recommendations.');
-    console.error('❌ Error fetching recommendations:', err);
-  }
-  setLoading(false);
-};
+      if (scopeRef.current !== myScope) return;
 
-  // Animation loop (pause-aware)
+      if (ensured !== topGames) {
+        setTopGames(ensured);
+        setScopedItem('topThree', myScope, ensured);
+      }
+
+      const demo = isDemoMode();
+      const res = await fetch(`${API}/api/recommend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: demo ? 'omit' : 'include', // demo has no session cookie
+        body: JSON.stringify({
+          gamesWithTags: ensured,
+          mode: demo ? 'demo' : 'steam',
+          userId: demo ? 'DEMO_USER' : undefined,
+        }),
+      });
+      if (!res.ok) throw new Error(`POST /api/recommend -> ${res.status}`);
+      const data = await res.json();
+
+      if (scopeRef.current !== myScope) return;
+
+      setRecommendations(data.recommendations);
+    } catch (err) {
+      if (scopeRef.current !== myScope) return;
+      setRecommendations('Failed to fetch recommendations.');
+      console.error('❌ Error fetching recommendations:', err);
+    }
+    if (scopeRef.current === myScope) setLoading(false);
+  };
+
+  /* ------------------------------- Animation ------------------------------- */
+  const requestRef = useRef();
   useEffect(() => {
     const animate = () => {
       if (!paused) setRotation((prev) => prev + 0.05);
@@ -284,48 +322,50 @@ function GameAI() {
     return () => cancelAnimationFrame(requestRef.current);
   }, [paused]);
 
-  if (!API) {
-  return <p>Configuration error: API URL missing.</p>;
-}
+  /* ----------------------------- Early Exits UI ---------------------------- */
+  if (!API && !isDemoMode()) {
+    return <p>Configuration error: API URL missing.</p>;
+  }
 
-  // In demo, we synthesize a user; in Steam flow we still require an auth'd user
   if (!user) {
     return isDemoMode() ? <p>Loading demo…</p> : <p>You are not logged in with Steam.</p>;
   }
 
+  /* --------------------------------- Render -------------------------------- */
   return (
     <div className="gameai-wrapper">
       <div className="profile-container">
         <div className="gameai-content">
-          {/* Top-left profile */}
-     <div className="profile-header">
-  {/* Only show avatar if we actually have one (and not in demo) */}
-  {!isDemoMode() && avatar && (
-    <img
-      className="avatar"
-      src={avatar}
-      alt={`${user.displayName} avatar`}
-      onError={(e) => { e.currentTarget.src = '/fallback-avatar.png'; }}
-    />
-  )}
 
-  {/* Only render username if it's non-empty */}
-  {!isDemoMode() && user?.displayName && (
-    <h1 className="username">{user.displayName}</h1>
-  )}
+          {/* Fixed HUD header */}
+          <div className="profile-header">
+            {/* Only show avatar/username in Steam mode */}
+            {!isDemoMode() && avatar && (
+              <img
+                className="avatar"
+                src={avatar}
+                alt={`${user.displayName} avatar`}
+                onError={(e) => { e.currentTarget.src = '/fallback-avatar.png'; }}
+              />
+            )}
+            {!isDemoMode() && user?.displayName && (
+              <h1 className="username">{user.displayName}</h1>
+            )}
 
-  {/* Exit demo button */}
-  {isDemoMode() && (
-    <button className="customize-button exit-demo-btn" onClick={() => exitDemoOrSignOut()}>
-      Exit Demo
-    </button>
-  )}
-</div>
+            {/* Exit demo (left-aligned with no phantom gap) */}
+            {isDemoMode() && (
+              <button className="customize-button exit-demo-btn" onClick={() => exitDemoOrSignOut()}>
+                Exit Demo
+              </button>
+            )}
+          </div>
 
           {/* Title */}
           <p className="steam-games-title">Games You've Played:</p>
+
           {games.length === 0 ? (
-            <SteamPrivacyInstructions />
+            // Only show Steam privacy hint when not in demo
+            isDemoMode() ? null : <SteamPrivacyInstructions />
           ) : (
             <div className={`carousel-container ${paused ? 'is-paused' : ''}`}>
               {paused && <div className="pause-overlay"></div>}
@@ -358,12 +398,11 @@ function GameAI() {
                           alt={game.name}
                           onError={(e) => (e.currentTarget.style.display = 'none')}
                         />
-
                         <div className="game-info">
                           <p>{game.name}</p>
-                          <div className="rated-stars-badge" aria-label={`Rated ${ratings[game.appid]} out of 5`}>
+                          <div className="rated-stars-badge" aria-label={`Rated ${ratings[game.appid] ?? 0} out of 5`}>
                             {[1, 2, 3, 4, 5].map((s) => (
-                              <span key={s} className={`star ${ratings[game.appid] >= s ? 'filled' : ''}`}>
+                              <span key={s} className={`star ${(ratings[game.appid] ?? 0) >= s ? 'filled' : ''}`}>
                                 ★
                               </span>
                             ))}
@@ -452,7 +491,10 @@ function GameAI() {
                       });
                     }}
                   >
-                    <img src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`} alt={game.name} />
+                    <img
+                      src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
+                      alt={game.name}
+                    />
                     <p>{game.name}</p>
                   </div>
                 ))}
@@ -483,7 +525,7 @@ function GameAI() {
                     }
 
                     setTopGames(enriched);
-                    localStorage.setItem('topThree', JSON.stringify(enriched));
+                    setScopedItem('topThree', scopeRef.current, enriched);
                     setShowGamePicker(false);
                   } catch (err) {
                     console.error('❌ Failed to fetch tags or save selection:', err);
@@ -543,6 +585,7 @@ function GameAI() {
               </div>
             </div>
           )}
+
         </div>
       </div>
     </div>
