@@ -31,7 +31,6 @@ function GameAILogin() {
       { appid: 72850, name: 'The Elder Scrolls V: Skyrim', playtime_forever: 230, tags: ['RPG', 'Open World', 'Fantasy'] },
       { appid: 440, name: 'Team Fortress 2', playtime_forever: 50, tags: ['Shooter', 'Class-Based', 'Multiplayer'] },
       { appid: 700330, name: 'Among Us', playtime_forever: 40, tags: ['Social Deduction', 'Multiplayer', 'Party'] },
-      { appid: 271590, name: 'No Man’s Sky', playtime_forever: 110, tags: ['Exploration', 'Open World', 'Survival'] },
       { appid: 1222670, name: 'Baldur’s Gate 3', playtime_forever: 95, tags: ['RPG', 'Story Rich', 'Co-op'] },
       { appid: 367520, name: 'Hades', playtime_forever: 90, tags: ['Roguelike', 'Action', 'Indie'] },
       { appid: 504230, name: 'Celeste', playtime_forever: 30, tags: ['Platformer', 'Indie', 'Challenging'] },
