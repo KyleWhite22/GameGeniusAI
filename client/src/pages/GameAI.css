@@ -527,5 +527,3 @@ html, body {
 /* Hide empty usernames so they don't occupy width */
 .username:empty { display: none !important; }
 
-/* In case some layout still adds space, remove any left margin from the button */
-.exit-demo-btn { margin-left: 0 !important; }
