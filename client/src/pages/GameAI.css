@@ -42,20 +42,23 @@ html, body {
 .profile-header {
   position: fixed !important;
   top: 0.75rem !important;
-  left: 0.75rem !important;
+  left: 0 !important;             /* start at left edge */
+  right: 0 !important;            /* stretch full width */
   display: flex !important;
   flex-direction: row !important;
-  align-items: center !important; /* level with avatar */
-  gap: 0.4rem !important;
+  align-items: center !important;
+  gap: 0.4rem !important;         /* keeps space between avatar + username */
+  justify-content: flex-start !important; /* avatar + name on left */
   z-index: 100 !important;
   background: rgba(0, 0, 0, 0.35) !important;
-  padding: 0.3rem 0.5rem !important;
+  padding: 0.3rem 0.75rem !important;
   border-radius: 6px !important;
   backdrop-filter: blur(3px) !important;
   box-shadow: none !important;
   border: none !important;
   white-space: nowrap !important;
 }
+
 
 .profile-header .avatar,
 .avatar {
@@ -515,11 +518,6 @@ html, body {
   font-size: 1.2rem;
   color: #47cfb6;
 }
-
 .exit-demo-btn {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 1000;
-  margin-left: 0; /* not needed in fixed mode */
+  margin-left: auto;    /* the magic */
 }
