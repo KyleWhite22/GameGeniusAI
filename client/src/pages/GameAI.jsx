@@ -298,27 +298,29 @@ function GameAI() {
       <div className="profile-container">
         <div className="gameai-content">
           {/* Top-left profile */}
-          <div className="profile-header">
-            {avatar ? (
-              <img
-                className="avatar"
-                src={avatar}
-                alt={`${user.displayName} avatar`}
-                onError={(e) => {
-                  e.currentTarget.src = '/fallback-avatar.png';
-                }}
-              />
-            ) : (
-              <div className="avatar" style={{ background: '#033', display: 'inline-block' }} />
-            )}
-            <h1 className="username">{user.displayName}</h1>
+     <div className="profile-header">
+  {/* Only show avatar if we actually have one (and not in demo) */}
+  {!isDemoMode() && avatar && (
+    <img
+      className="avatar"
+      src={avatar}
+      alt={`${user.displayName} avatar`}
+      onError={(e) => { e.currentTarget.src = '/fallback-avatar.png'; }}
+    />
+  )}
 
-    {isDemoMode() && (
+  {/* Only render username if it's non-empty */}
+  {!isDemoMode() && user?.displayName && (
+    <h1 className="username">{user.displayName}</h1>
+  )}
+
+  {/* Exit demo button */}
+  {isDemoMode() && (
     <button className="customize-button exit-demo-btn" onClick={() => exitDemoOrSignOut()}>
       Exit Demo
     </button>
   )}
-          </div>
+</div>
 
           {/* Title */}
           <p className="steam-games-title">Games You've Played:</p>
