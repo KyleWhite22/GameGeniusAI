@@ -516,12 +516,10 @@ html, body {
   color: #47cfb6;
 }
 
-.exit-demo-fullscreen {
+.exit-demo-btn {
   position: fixed;
-  inset: 0;                /* stretch full screen */
-  display: flex;
-  justify-content: center; /* center horizontally */
-  align-items: center;     /* center vertically */
-  background: transparent; /* optional: overlay bg */
-  z-index: 999;            /* make sure it’s on top */
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  margin-left: 0; /* not needed in fixed mode */
 }
