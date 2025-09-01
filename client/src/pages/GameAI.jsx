@@ -42,7 +42,7 @@ function readDemoGames() {
   }
 }
 
-const DEMO_USER = { id: 'DEMO_USER', displayName: 'Guest', photos: [] };
+const DEMO_USER = { id: 'DEMO_USER', displayName: '', photos: [] };
 
 function GameAI() {
   const navigate = useNavigate();
