@@ -515,3 +515,9 @@ html, body {
   font-size: 1.2rem;
   color: #47cfb6;
 }
+
+.exit-demo-container {
+  display: flex;
+  justify-content: center; /* horizontal center */
+  margin-top: 1rem;        /* optional spacing */
+}

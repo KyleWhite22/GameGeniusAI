@@ -83,14 +83,14 @@ function GameAI() {
     document.body.classList.remove('no-scroll');
   }
 
-  function exitDemoOrSignOut(navigateTo = '/GameGeniusAI/login') {
-    localStorage.removeItem('authMode');
-    localStorage.removeItem('demoGames');
-    localStorage.removeItem('topThree');
-    localStorage.removeItem('gameRatings');
-    localStorage.removeItem('resumeUrl');
-    window.location.href = navigateTo; // or navigate(navigateTo)
-  }
+  function exitDemoOrSignOut(navigateTo = 'https://game.kyle-white.com') {
+  localStorage.removeItem('authMode');
+  localStorage.removeItem('demoGames');
+  localStorage.removeItem('topThree');
+  localStorage.removeItem('gameRatings');
+  localStorage.removeItem('resumeUrl');
+  window.location.href = navigateTo;
+}
 
   function SteamPrivacyInstructions() {
     return (
@@ -313,12 +313,13 @@ function GameAI() {
             )}
             <h1 className="username">{user.displayName}</h1>
 
-            {/* Exit demo / sign out */}
-            {isDemoMode() && (
-              <button className="exit-demo-btn" onClick={() => exitDemoOrSignOut()}>
-                Exit Demo
-              </button>
-            )}
+          {isDemoMode() && (
+  <div className="exit-demo-container">
+    <button className="customize-button" onClick={() => exitDemoOrSignOut()}>
+      Exit Demo
+    </button>
+  </div>
+)}
           </div>
 
           {/* Title */}
