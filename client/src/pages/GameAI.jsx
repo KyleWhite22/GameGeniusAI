@@ -313,14 +313,11 @@ function GameAI() {
             )}
             <h1 className="username">{user.displayName}</h1>
 
-     {isDemoMode() && (
-  <button
-    className="exit-demo-btn"
-    onClick={() => exitDemoOrSignOut()}
-  >
-    Exit Demo
-  </button>
-)}
+    {isDemoMode() && (
+    <button className="customize-button exit-demo-btn" onClick={() => exitDemoOrSignOut()}>
+      Exit Demo
+    </button>
+  )}
           </div>
 
           {/* Title */}

@@ -519,5 +519,5 @@ html, body {
   color: #47cfb6;
 }
 .exit-demo-btn {
-  margin-left: auto;    /* the magic */
+  margin-left: 0 !important; /* remove auto-push */
 }
