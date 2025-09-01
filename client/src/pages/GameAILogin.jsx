@@ -20,13 +20,20 @@ function GameAILogin() {
     localStorage.setItem('authMode', 'demo');
     localStorage.setItem('resumeUrl', '/GameGeniusAI');
     // optional: store a preset list of demo games
-    localStorage.setItem('demoGames', JSON.stringify([
-      { appid: 1245620, name: 'ELDEN RING', playtime_forever: 5400, tags: ['Soulslike','RPG','Open World'] },
-      { appid: 271590, name: 'Grand Theft Auto V', playtime_forever: 8200, tags: ['Action','Open World'] },
-      { appid: 570, name: 'Dota 2', playtime_forever: 16000, tags: ['MOBA','Multiplayer'] },
-      { appid: 413150, name: 'Stardew Valley', playtime_forever: 2500, tags: ['Indie','Farming Sim'] },
-      { appid: 620, name: 'Portal 2', playtime_forever: 1100, tags: ['Puzzle','Co-op'] }
-    ]));
+  localStorage.setItem('demoGames', JSON.stringify([
+  { appid: 1245620, name: 'ELDEN RING', playtime_forever: 100, tags: ['Soulslike','RPG','Open World'] },
+  { appid: 271590, name: 'Grand Theft Auto V', playtime_forever: 150, tags: ['Action','Open World'] },
+  { appid: 413150, name: 'Stardew Valley', playtime_forever: 200, tags: ['Indie','Farming Sim'] },
+  { appid: 620, name: 'Portal 2', playtime_forever: 80, tags: ['Puzzle','Co-op'] },
+  { appid: 1174180, name: 'Red Dead Redemption 2', playtime_forever: 90, tags: ['Western','Story Rich','Open World'] },
+  { appid: 359550, name: 'Tom Clancy’s Rainbow Six Siege', playtime_forever: 80, tags: ['Shooter','Tactical','Multiplayer'] },
+  { appid: 105600, name: 'Terraria', playtime_forever: 80, tags: ['Sandbox','Survival','Indie'] },
+-  { appid: 292040, name: 'Hollow Knight', playtime_forever: 40, tags: ['Metroidvania','Indie','Action'] },
+  { appid: 72850, name: 'The Elder Scrolls V: Skyrim', playtime_forever: 230, tags: ['RPG','Open World','Fantasy'] },
+    { appid: 440, name: 'Team Fortress 2', playtime_forever: 50, tags: ['Shooter','Class-Based','Multiplayer'] },
+
+
+]));
     // redirect them straight into the app
     window.location.href = '/GameGeniusAI';
   };
