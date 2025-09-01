@@ -21,6 +21,20 @@ async function enrichWithTags(games) {
     );
     return enriched;
 }
+function isDemoMode() {
+    return localStorage.getItem('authMode') === 'demo';
+}
+function readDemoGames() {
+    try {
+        const raw = localStorage.getItem('demoGames');
+        const arr = raw ? JSON.parse(raw) : [];
+        // Make sure every demo game has tags (so we don’t call /api/tags)
+        return Array.isArray(arr) ? arr.map(g => ({ ...g, tags: g.tags || [] })) : [];
+    } catch {
+        return [];
+    }
+}
+const DEMO_USER = { id: 'DEMO_USER', displayName: 'Guest', photos: [] };
 function GameAI() {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
@@ -110,6 +124,34 @@ function GameAI() {
                 setLoading(false);
                 return;
             }
+
+            // --- DEMO MODE: no network calls for auth/games ---
+            if (isDemoMode()) {
+                const demoGames = readDemoGames();
+                setUser(DEMO_USER);
+                setGames(demoGames);
+
+                // seed topThree from localStorage if present; otherwise first up to 3
+                const stored = localStorage.getItem('topThree');
+                const initialTop = stored && stored !== 'undefined'
+                    ? JSON.parse(stored)
+                    : demoGames.slice(0, 3);
+
+                setTopGames(initialTop);
+                setCustomSelection(initialTop);
+                localStorage.setItem('topThree', JSON.stringify(initialTop));
+
+                // honor resumeUrl like normal
+                const resumeUrl = localStorage.getItem('resumeUrl');
+                if (resumeUrl) {
+                    localStorage.removeItem('resumeUrl');
+                    navigate(resumeUrl);
+                }
+                setLoading(false);
+                return;
+            }
+
+            // --- NORMAL STEAM FLOW ---
             try {
                 const res = await fetch(`${API}/auth/user`, { credentials: 'include' });
                 if (!res.ok) throw new Error(`GET /auth/user -> ${res.status}`);
@@ -118,6 +160,7 @@ function GameAI() {
                 if (data.user) {
                     setUser(data.user);
                     await fetchGames(data.user.id);
+
                     const resumeUrl = localStorage.getItem('resumeUrl');
                     if (resumeUrl) {
                         localStorage.removeItem('resumeUrl');
@@ -168,16 +211,24 @@ function GameAI() {
         }
         setLoading(true);
         try {
+            // ensure tags; demo data already includes tags so this is cheap
             const ensured = await enrichWithTags(topGames);
             if (ensured !== topGames) {
                 setTopGames(ensured);
                 localStorage.setItem('topThree', JSON.stringify(ensured));
             }
+
+            const demo = isDemoMode();
             const res = await fetch(`${API}/api/recommend`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ gamesWithTags: ensured }),
+                // If your backend doesn't require session for /api/recommend, omit cookies in demo.
+                credentials: demo ? 'omit' : 'include',
+                body: JSON.stringify({
+                    gamesWithTags: ensured,
+                    mode: demo ? 'demo' : 'steam', // harmless hint for backend logs
+                    userId: demo ? 'DEMO_USER' : undefined,
+                }),
             });
             if (!res.ok) throw new Error(`POST /api/recommend -> ${res.status}`);
             const data = await res.json();
@@ -200,10 +251,17 @@ function GameAI() {
     }, [paused]);
 
     if (!API) return <p>Configuration error: API URL missing.</p>;
-    if (!user) return <p>You are not logged in with Steam.</p>;
+
+    // In demo, we synthesize a user; in Steam flow we still require an auth'd user
+    if (!user) {
+        return isDemoMode()
+            ? <p>Loading demo…</p>
+            : <p>You are not logged in with Steam.</p>;
+    }
 
 
     return (
+
         <div className="gameai-wrapper">
             <div className="profile-container">
                 <div className="gameai-content">
