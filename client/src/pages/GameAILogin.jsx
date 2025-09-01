@@ -28,21 +28,18 @@ function GameAILogin() {
       { appid: 1174180, name: 'Red Dead Redemption 2', playtime_forever: 90, tags: ['Western', 'Story Rich', 'Open World'] },
       { appid: 359550, name: 'Tom Clancy’s Rainbow Six Siege', playtime_forever: 80, tags: ['Shooter', 'Tactical', 'Multiplayer'] },
       { appid: 105600, name: 'Terraria', playtime_forever: 80, tags: ['Sandbox', 'Survival', 'Indie'] },
-      { appid: 292040, name: 'Hollow Knight', playtime_forever: 40, tags: ['Metroidvania', 'Indie', 'Action'] },
+      { appid: 367520, name: 'Hollow Knight', playtime_forever: 40, tags: ['Metroidvania', 'Indie', 'Action'] },
+      { appid: 1145360, name: 'Hades', playtime_forever: 90, tags: ['Roguelike', 'Action', 'Indie'] },
+      { appid: 289070, name: 'Sid Meier’s Civilization VI', playtime_forever: 120, tags: ['Strategy', 'Turn-Based', 'Multiplayer'] },
+      { appid: 945360, name: 'Among Us', playtime_forever: 40, tags: ['Social Deduction', 'Multiplayer', 'Party'] },
+      { appid: 264710, name: 'Subnautica', playtime_forever: 95, tags: ['Survival', 'Exploration', 'Underwater'] },
       { appid: 72850, name: 'The Elder Scrolls V: Skyrim', playtime_forever: 230, tags: ['RPG', 'Open World', 'Fantasy'] },
       { appid: 440, name: 'Team Fortress 2', playtime_forever: 50, tags: ['Shooter', 'Class-Based', 'Multiplayer'] },
-      { appid: 700330, name: 'Among Us', playtime_forever: 40, tags: ['Social Deduction', 'Multiplayer', 'Party'] },
-      { appid: 367520, name: 'Hades', playtime_forever: 90, tags: ['Roguelike', 'Action', 'Indie'] },
-      { appid: 504230, name: 'Celeste', playtime_forever: 30, tags: ['Platformer', 'Indie', 'Challenging'] },
       { appid: 739630, name: 'Phasmophobia', playtime_forever: 45, tags: ['Horror', 'Co-op', 'Multiplayer'] },
       { appid: 620980, name: 'Beat Saber', playtime_forever: 60, tags: ['VR', 'Rhythm', 'Music'] },
-      { appid: 8930, name: 'Sid Meier’s Civilization VI', playtime_forever: 120, tags: ['Strategy', 'Turn-Based', 'Multiplayer'] },
       { appid: 252950, name: 'Rocket League', playtime_forever: 120, tags: ['Sports', 'Multiplayer', 'Competitive'] },
-      { appid: 255710, name: 'Cities: Skylines', playtime_forever: 85, tags: ['City Builder', 'Simulation', 'Strategy'] },
       { appid: 291550, name: 'Brawlhalla', playtime_forever: 60, tags: ['Fighting', 'Platformer', 'Multiplayer'] },
-      { appid: 477160, name: 'Subnautica', playtime_forever: 95, tags: ['Survival', 'Exploration', 'Underwater'] },
       { appid: 12210, name: 'Grand Theft Auto IV', playtime_forever: 200, tags: ['Action', 'Open World', 'Story Rich'] }
-
     ]));
     // redirect them straight into the app
     window.location.href = '/GameGeniusAI';
