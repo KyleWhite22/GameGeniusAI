@@ -28,7 +28,6 @@ function GameAILogin() {
       { appid: 1174180, name: 'Red Dead Redemption 2', playtime_forever: 90, tags: ['Western', 'Story Rich', 'Open World'] },
       { appid: 359550, name: 'Tom Clancy’s Rainbow Six Siege', playtime_forever: 80, tags: ['Shooter', 'Tactical', 'Multiplayer'] },
       { appid: 105600, name: 'Terraria', playtime_forever: 80, tags: ['Sandbox', 'Survival', 'Indie'] },
-      { appid: 292040, name: 'Hollow Knight', playtime_forever: 40, tags: ['Metroidvania', 'Indie', 'Action'] },
       { appid: 72850, name: 'The Elder Scrolls V: Skyrim', playtime_forever: 230, tags: ['RPG', 'Open World', 'Fantasy'] },
       { appid: 440, name: 'Team Fortress 2', playtime_forever: 50, tags: ['Shooter', 'Class-Based', 'Multiplayer'] },
       { appid: 700330, name: 'Among Us', playtime_forever: 40, tags: ['Social Deduction', 'Multiplayer', 'Party'] },
