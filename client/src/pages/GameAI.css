@@ -516,8 +516,12 @@ html, body {
   color: #47cfb6;
 }
 
-.exit-demo-container {
+.exit-demo-fullscreen {
+  position: fixed;
+  inset: 0;                /* stretch full screen */
   display: flex;
-  justify-content: center; /* horizontal center */
-  margin-top: 1rem;        /* optional spacing */
+  justify-content: center; /* center horizontally */
+  align-items: center;     /* center vertically */
+  background: transparent; /* optional: overlay bg */
+  z-index: 999;            /* make sure it’s on top */
 }

@@ -313,8 +313,8 @@ function GameAI() {
             )}
             <h1 className="username">{user.displayName}</h1>
 
-          {isDemoMode() && (
-  <div className="exit-demo-container">
+         {isDemoMode() && (
+  <div className="exit-demo-fullscreen">
     <button className="customize-button" onClick={() => exitDemoOrSignOut()}>
       Exit Demo
     </button>
