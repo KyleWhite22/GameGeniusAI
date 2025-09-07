@@ -62,7 +62,11 @@ function GameAILogin() {
         <button className="demo-login-btn" onClick={handleDemoMode}>
           I don’t have Steam — try demo mode
         </button>
+       <footer className="footer">
+                        <div>Created by <strong>Kyle White</strong> 2025</div>
+                    </footer>
       </div>
+
     </div>
   );
 }

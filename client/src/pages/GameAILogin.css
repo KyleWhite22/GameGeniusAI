@@ -90,3 +90,10 @@ button:hover { background-color: #21b05a; }
 .demo-login-btn:hover {
   background-color: #444;
 }
+.footer {
+  margin-top: auto;            /* pushes footer to the bottom */
+  width: 100%;
+  text-align: center;
+  padding: 12px 16px;
+  color: #a1a1aa;
+}

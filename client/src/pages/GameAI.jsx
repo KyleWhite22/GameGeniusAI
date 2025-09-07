@@ -590,7 +590,9 @@ function GameAI() {
                             </div>
                         </div>
                     )}
-
+                    <footer className="footer">
+                        <div>Created by <strong>Kyle White</strong> 2025</div>
+                    </footer>
                 </div>
             </div>
         </div>
