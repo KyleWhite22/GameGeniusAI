@@ -298,7 +298,7 @@ html, body {
   max-width: 900px;
   width: 100%;
   backdrop-filter: blur(8px);
-  background: rgba(0,0,0,.45);
+  background: #1A1A1A;
   border: 1px solid rgba(0,255,0,.25);
   box-shadow: 0 0 12px rgba(0,255,0,.35), inset 0 0 10px rgba(0,255,0,.08);
   color: var(--text);
