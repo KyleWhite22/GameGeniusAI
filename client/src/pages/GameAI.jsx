@@ -470,10 +470,23 @@ function GameAI() {
 
                         {recommendations && (
                             <div className="recommendation-output">
-                                <p className="recommendation-header">Based on your selected games, GameGeniusAI recommends:</p>
-                                <pre className="recommendation-text">{recommendations}</pre>
+                                <p className="recommendation-header">
+                                    Based on your selected games, GameGeniusAI recommends:
+                                </p>
+                                <pre className="recommendation-text">
+                                    {recommendations.split('\n').map((line, i) => {
+                                        const [title, desc] = line.split('—');
+                                        return (
+                                            <div key={i} style={{ marginBottom: '0.8rem' }}>
+                                                {title && <span className="game-title">{title.trim()} — </span>}
+                                                {desc && <span className="game-desc">{desc.trim()}</span>}
+                                            </div>
+                                        );
+                                    })}
+                                </pre>
                             </div>
                         )}
+
                     </div>
 
                     {/* Game Picker Modal */}

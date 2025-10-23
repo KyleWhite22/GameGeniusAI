@@ -305,7 +305,20 @@ html, body {
   text-align: left;
 }
 .recommendation-header { font-weight: 700; margin-bottom: .5rem; }
-.recommendation-text { white-space: pre-wrap; word-break: break-word; }
+.recommendation-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.8; 
+}
+.game-title {
+  color: #00ff00; 
+  font-weight: 600;
+}
+
+.game-desc {
+  color: #a1a1aa; 
+}
+
 
 /* ===== Buttons ===== */
 .customize-button,
